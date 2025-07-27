@@ -53,6 +53,29 @@ Features:
 - Git commits for version changes
 - Error handling and reporting
 
+### Minimum Version Fixing
+
+Automatically fix minimum version compatibility bounds to ensure packages pass downgrade CI tests:
+
+```julia
+# Fix a single repository
+success = fix_repo_min_versions("SciML/OrdinaryDiffEq.jl")
+
+# Fix all repositories in an organization
+results = fix_org_min_versions("SciML")
+
+# Process only specific repositories
+results = fix_org_min_versions("SciML"; 
+    only_repos=["OrdinaryDiffEq.jl", "DiffEqBase.jl"])
+```
+
+Features:
+- Tests minimum versions using Stefan Karpinski's Resolver.jl
+- Intelligently identifies and fixes problematic minimum versions
+- Creates pull requests with detailed changelogs
+- Smart version detection using registry lookups
+- Preserves existing upper bounds in compat entries
+
 ## Installation
 
 ```julia

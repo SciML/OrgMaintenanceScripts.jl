@@ -10,9 +10,13 @@ using Dates
 export bump_and_register_repo, bump_and_register_org
 export format_repository, format_org_repositories
 export update_manifests, update_project_tomls
+export fix_package_min_versions, fix_repo_min_versions, fix_org_min_versions
 
 # Include formatting functionality
 include("formatting.jl")
+
+# Include minimum version fixing functionality
+include("min_version_fixer.jl")
 
 """
     bump_minor_version(version_str::String) -> String
