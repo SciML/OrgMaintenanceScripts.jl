@@ -53,6 +53,27 @@ Features:
 - Git commits for version changes
 - Error handling and reporting
 
+### Explicit Imports Fixing
+
+Automatically fix implicit imports and remove unused imports using ExplicitImports.jl:
+
+```julia
+# Fix a single package
+success, iterations, report = fix_explicit_imports("/path/to/MyPackage.jl")
+
+# Fix and create PR for a repository
+fix_repo_explicit_imports("SciML/MyPackage.jl")
+
+# Fix all packages in an organization
+results = fix_org_explicit_imports("SciML")
+```
+
+Features:
+- Detects implicit imports and adds explicit import statements
+- Removes unused explicit imports
+- Iteratively applies fixes until all checks pass
+- Verifies package still works after changes
+
 ### Minimum Version Fixing
 
 Automatically fix minimum version compatibility bounds to ensure packages pass downgrade CI tests:
