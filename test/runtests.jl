@@ -98,7 +98,7 @@ using TOML
             result = bump_and_register_repo(tmpdir)
             
             @test !isnothing(result)
-            @test "MainPackage" in result.registered
+            @test basename(tmpdir) in result.registered
             @test "SubPkgA" in result.registered
             @test "SubPkgB" in result.registered
             @test isempty(result.failed)
@@ -117,7 +117,7 @@ using TOML
     
     @testset "Basic functionality (legacy)" begin
         # Test deprecated functions still exist but warn
-        @test_logs (:warn,) update_manifests()
-        @test_logs (:warn,) update_project_tomls()
+        @test_logs (:warn,) OrgMaintenanceScripts.update_manifests()
+        @test_logs (:warn,) OrgMaintenanceScripts.update_project_tomls()
     end
 end
