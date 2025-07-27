@@ -114,12 +114,12 @@ results = fix_org_min_versions("SciML"; create_prs=false)
 
 The tool uses multiple strategies to determine appropriate minimum versions:
 
-1. **SciML-Specific Versions**: Built-in knowledge of tested minimum versions for common SciML packages
-2. **Registry Lookup**: Queries the General registry for the latest compatible version
-3. **Conservative Bumping**:
+1. **Registry Lookup**: Queries the General registry for the latest compatible version
+2. **Conservative Bumping**:
    - For `0.x` packages: Uses the latest `0.x` version
    - For stable packages (`≥1.0`): Uses `major.0.0`
    - Preserves existing upper bounds in all compat entries
+3. **Fallback Strategy**: If registry lookup fails, conservatively bumps the current version
 
 ## Requirements
 

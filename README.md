@@ -73,7 +73,7 @@ Features:
 - Tests minimum versions using julia-actions downgrade approach
 - Intelligently identifies and fixes problematic minimum versions
 - Creates pull requests with detailed changelogs
-- Built-in knowledge of SciML package versions
+- Smart version detection using registry lookups
 - Preserves existing upper bounds in compat entries
 
 ## Installation

@@ -7,47 +7,6 @@ using Dates
 using HTTP
 using JSON3
 
-# SciML-specific minimum versions that are known to work
-const SCIML_MIN_VERSIONS = Dict(
-    # Core packages
-    "SciMLBase" => "2.0",
-    "DiffEqBase" => "6.0",
-    "OrdinaryDiffEq" => "6.0",
-    "DifferentialEquations" => "7.0",
-    "ModelingToolkit" => "9.0",
-    "Symbolics" => "5.0",
-    "Catalyst" => "13.0",
-    
-    # Solver packages
-    "Sundials" => "4.0",
-    "DiffEqCallbacks" => "3.0",
-    "StochasticDiffEq" => "6.0",
-    "DelayDiffEq" => "5.0",
-    "DiffEqJump" => "9.0",
-    
-    # Analysis packages
-    "DiffEqSensitivity" => "7.0",
-    "DiffEqFlux" => "3.0",
-    "DataDrivenDiffEq" => "1.0",
-    "NeuralPDE" => "5.0",
-    "DiffEqParamEstim" => "2.0",
-    
-    # Utility packages
-    "RecursiveArrayTools" => "3.0",
-    "ArrayInterface" => "7.0",
-    "StaticArrays" => "1.0",
-    "ForwardDiff" => "0.10",
-    "PreallocationTools" => "0.4",
-    "SciMLOperators" => "0.3",
-    
-    # Common dependencies
-    "Reexport" => "1.0",
-    "DocStringExtensions" => "0.8",
-    "Parameters" => "0.12",
-    "UnPack" => "1.0",
-    "ConstructionBase" => "1.0",
-    "Setfield" => "1.0"
-)
 
 """
     setup_downgrade_script(work_dir::String)
@@ -140,11 +99,6 @@ end
 Get an appropriate minimum version for a package.
 """
 function get_smart_min_version(pkg_name::String, current_compat::String)
-    # Check SciML-specific versions first
-    if haskey(SCIML_MIN_VERSIONS, pkg_name)
-        return SCIML_MIN_VERSIONS[pkg_name]
-    end
-    
     # Try to get latest from registry
     try
         latest = get_latest_version(pkg_name)

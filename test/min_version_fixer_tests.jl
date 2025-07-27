@@ -45,14 +45,13 @@ using TOML
     end
     
     @testset "get_smart_min_version" begin
-        # Test SciML-specific packages
-        @test OrgMaintenanceScripts.get_smart_min_version("SciMLBase", "0.1") == "2.0"
-        @test OrgMaintenanceScripts.get_smart_min_version("OrdinaryDiffEq", "1.0") == "6.0"
-        @test OrgMaintenanceScripts.get_smart_min_version("RecursiveArrayTools", "0.5") == "3.0"
-        
-        # Test fallback for unknown packages
+        # Test fallback behavior for packages
         @test OrgMaintenanceScripts.get_smart_min_version("UnknownPkg", "0.3") == "0.4"
         @test OrgMaintenanceScripts.get_smart_min_version("UnknownPkg", "1.2") == "1.0"
+        
+        # Note: We can't easily test registry lookups in unit tests without mocking
+        # The function will try to get latest version from registry first,
+        # then fall back to bump_compat_version
     end
     
     @testset "parse_resolution_errors" begin
