@@ -409,7 +409,7 @@ function get_org_repositories(org::String, limit::Int = 100)
             `gh repo list $org --limit $limit --json name,isArchived --jq '.[] | select(.isArchived == false and (.name | endswith(".jl"))) | .name'`
         output = read(cmd, String)
         repos = filter(!isempty, split(strip(output), '\n'))
-        return repos
+        return String.(repos)  # Convert to Vector{String}
     catch e
         @error "Failed to fetch repositories" exception=e
         return String[]
@@ -428,15 +428,19 @@ function has_failing_formatter_ci(org::String, repo::String)
     for workflow in workflows
         for branch in branches
             try
+                # First get all runs for the workflow
                 cmd =
-                    `gh run list --repo $org/$repo --workflow $workflow --branch $branch --limit 1 --json status,conclusion`
+                    `gh run list --repo $org/$repo --workflow $workflow --limit 10 --json status,conclusion,headBranch`
                 output = read(cmd, String)
 
-                if !isempty(output) && (
-                    occursin("\"conclusion\":\"failure\"", output) ||
-                    occursin("\"status\":\"failure\"", output)
-                )
-                    return true
+                if !isempty(output)
+                    # Check if any run on the target branch has failed
+                    if occursin("\"headBranch\":\"$branch\"", output) && (
+                        occursin("\"conclusion\":\"failure\"", output) ||
+                        occursin("\"status\":\"failure\"", output)
+                    )
+                        return true
+                    end
                 end
             catch
                 # Workflow might not exist

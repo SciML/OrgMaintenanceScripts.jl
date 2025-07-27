@@ -37,7 +37,7 @@ using Pkg
         # This test might fail if gh CLI is not available
         try
             repos = OrgMaintenanceScripts.get_org_repositories("JuliaLang", 5)
-            @test isa(repos, Vector{String})
+            @test isa(repos, Vector{<:AbstractString})
             @test all(repo -> endswith(repo, ".jl"), repos)
         catch e
             @test_skip "gh CLI not available"
