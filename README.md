@@ -110,6 +110,13 @@ Pkg.add(url="https://github.com/SciML/OrgMaintenanceScripts.jl")
 - GitHub CLI (`gh`) installed and authenticated (for formatting features)
 - Git configured with appropriate credentials
 
+## Dependencies
+
+All required Julia packages are automatically installed, including:
+- JuliaFormatter for code formatting
+- ExplicitImports for import analysis
+- HTTP/JSON3 for GitHub API interactions
+
 ## Documentation
 
 For detailed documentation, see the [docs](https://sciml.github.io/OrgMaintenanceScripts.jl/dev/).

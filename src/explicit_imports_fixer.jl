@@ -3,6 +3,8 @@
 
 using Pkg
 using TOML
+using ExplicitImports
+using JSON3
 
 """
     run_explicit_imports_check(package_path::String; verbose=true)
@@ -15,94 +17,133 @@ function run_explicit_imports_check(package_path::String; verbose=true)
         error("Package path does not exist: $package_path")
     end
     
-    # Create a temporary environment to run checks
+    # Load the package's Project.toml to get the module name
+    project_toml = TOML.parsefile(joinpath(package_path, "Project.toml"))
+    pkg_name = project_toml["name"]
+    
+    # Create a temporary environment to load and check the package
     mktempdir() do tmpdir
         # Copy the package to temp directory to avoid modifying the original during checks
         test_path = joinpath(tmpdir, "test_package")
         cp(package_path, test_path)
         
         cd(test_path) do
-            # Create a temporary project for running ExplicitImports
-            checker_env = joinpath(tmpdir, "checker_env")
-            mkpath(checker_env)
+            # Activate the package environment
+            Pkg.activate(".")
+            Pkg.instantiate()
             
-            # Create the checker script
-            checker_script = joinpath(tmpdir, "check_imports.jl")
-            open(checker_script, "w") do io
-                write(io, """
-                using Pkg
-                Pkg.activate(".")
-                Pkg.instantiate()
-                
-                # Add ExplicitImports to the environment
-                Pkg.add("ExplicitImports")
-                
-                using ExplicitImports
-                
-                # Load the package
-                pkg_name = TOML.parsefile("Project.toml")["name"]
-                pkg_symbol = Symbol(pkg_name)
-                
-                # Try to load the package
-                try
-                    eval(:(using \$pkg_symbol))
-                catch e
-                    println("ERROR: Failed to load package: ", e)
-                    exit(1)
-                end
-                
-                # Get the module
-                mod = getfield(Main, pkg_symbol)
-                
-                # Run checks
-                println("=== CHECKING MISSING EXPLICIT IMPORTS ===")
-                missing_imports = check_no_implicit_imports(mod)
-                if !isnothing(missing_imports)
-                    println(missing_imports)
-                end
-                
-                println("\\n=== CHECKING UNNECESSARY EXPLICIT IMPORTS ===")
-                unnecessary = check_no_stale_explicit_imports(mod)
-                if !isnothing(unnecessary)
-                    println(unnecessary)
-                end
-                
-                println("\\n=== CHECKING QUALIFIED ACCESSES ===")
-                qualified = check_all_qualified_accesses_via_owners(mod)
-                if !isnothing(qualified)
-                    println(qualified)
-                end
-                
-                println("\\n=== CHECKING PUBLIC EXPORTS ===")
-                public_check = check_all_explicit_imports_are_public(mod)
-                if !isnothing(public_check)
-                    println(public_check)
-                end
-                """)
-            end
-            
-            # Run the checker script
+            # Load the package
             try
-                output = read(`julia --project=. $checker_script`, String)
-                
-                # Parse the output to identify issues
-                issues = parse_explicit_imports_output(output)
-                
-                if verbose
-                    @info "ExplicitImports check output:\n$output"
-                end
-                
-                # Check if there are any issues
-                success = isempty(issues)
-                
-                return success, output, issues
+                # Use Base.eval to load the package in Main
+                Base.eval(Main, :(using $(Symbol(pkg_name))))
             catch e
-                error_msg = sprint(showerror, e)
+                error_msg = "Failed to load package $pkg_name: $(sprint(showerror, e))"
                 if verbose
-                    @error "Failed to run ExplicitImports check: $error_msg"
+                    @error error_msg
                 end
                 return false, error_msg, []
             end
+            
+            # Get the module
+            mod = getfield(Main, Symbol(pkg_name))
+            
+            # Collect all check results
+            report_lines = String[]
+            all_issues = []
+            
+            # Run checks and capture output
+            push!(report_lines, "=== CHECKING MISSING EXPLICIT IMPORTS ===")
+            try
+                missing_result = check_no_implicit_imports(mod)
+                if !isnothing(missing_result)
+                    # Convert the result to string representation
+                    result_str = sprint(show, missing_result)
+                    push!(report_lines, result_str)
+                    
+                    # Parse issues from the result
+                    if hasproperty(missing_result, :errors) && !isempty(missing_result.errors)
+                        for error in missing_result.errors
+                            # Extract module and symbol information
+                            if hasproperty(error, :name) && hasproperty(error, :source)
+                                push!(all_issues, (
+                                    type = :missing_import,
+                                    module_name = string(error.source),
+                                    symbol = string(error.name),
+                                    line = "$(error.source).$(error.name) is not explicitly imported"
+                                ))
+                            end
+                        end
+                    end
+                else
+                    push!(report_lines, "✓ No implicit imports found")
+                end
+            catch e
+                push!(report_lines, "ERROR: $(sprint(showerror, e))")
+            end
+            
+            push!(report_lines, "\n=== CHECKING UNNECESSARY EXPLICIT IMPORTS ===")
+            try
+                stale_result = check_no_stale_explicit_imports(mod)
+                if !isnothing(stale_result)
+                    result_str = sprint(show, stale_result)
+                    push!(report_lines, result_str)
+                    
+                    # Parse issues from the result
+                    if hasproperty(stale_result, :errors) && !isempty(stale_result.errors)
+                        for error in stale_result.errors
+                            if hasproperty(error, :name)
+                                push!(all_issues, (
+                                    type = :unused_import,
+                                    symbol = string(error.name),
+                                    line = "$(error.name) is explicitly imported but not used"
+                                ))
+                            end
+                        end
+                    end
+                else
+                    push!(report_lines, "✓ No stale explicit imports found")
+                end
+            catch e
+                push!(report_lines, "ERROR: $(sprint(showerror, e))")
+            end
+            
+            push!(report_lines, "\n=== CHECKING QUALIFIED ACCESSES ===")
+            try
+                qualified_result = check_all_qualified_accesses_via_owners(mod)
+                if !isnothing(qualified_result)
+                    result_str = sprint(show, qualified_result)
+                    push!(report_lines, result_str)
+                else
+                    push!(report_lines, "✓ All qualified accesses via owners")
+                end
+            catch e
+                push!(report_lines, "ERROR: $(sprint(showerror, e))")
+            end
+            
+            push!(report_lines, "\n=== CHECKING PUBLIC EXPORTS ===")
+            try
+                public_result = check_all_explicit_imports_are_public(mod)
+                if !isnothing(public_result)
+                    result_str = sprint(show, public_result)
+                    push!(report_lines, result_str)
+                else
+                    push!(report_lines, "✓ All explicit imports are public")
+                end
+            catch e
+                push!(report_lines, "ERROR: $(sprint(showerror, e))")
+            end
+            
+            # Combine report
+            full_report = join(report_lines, '\n')
+            
+            if verbose
+                @info "ExplicitImports check output:\n$full_report"
+            end
+            
+            # Check if there are any issues
+            success = isempty(all_issues)
+            
+            return success, full_report, all_issues
         end
     end
 end

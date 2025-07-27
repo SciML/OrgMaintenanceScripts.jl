@@ -2,6 +2,8 @@
 
 The explicit imports fixer uses [ExplicitImports.jl](https://github.com/ericphanson/ExplicitImports.jl) to automatically detect and fix import issues in Julia packages. It iteratively runs checks and applies fixes until all explicit import best practices are satisfied.
 
+ExplicitImports.jl is included as a direct dependency of OrgMaintenanceScripts, so no additional setup is required.
+
 ## Features
 
 - **Automatic Detection**: Uses ExplicitImports.jl to find implicit imports and unused explicit imports
