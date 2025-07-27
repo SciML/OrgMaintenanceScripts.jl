@@ -113,7 +113,7 @@ function parse_resolution_errors(output::String, project_toml::Dict)
     if isempty(problematic)
         compat = get(project_toml, "compat", Dict())
         for (pkg_name, compat_str) in compat
-            if pkg_name != "julia" && is_outdated_compat(compat_str)
+            if pkg_name != "julia" && is_outdated_compat(compat_str, pkg_name)
                 push!(problematic, pkg_name)
             end
         end
@@ -123,24 +123,82 @@ function parse_resolution_errors(output::String, project_toml::Dict)
 end
 
 """
-    is_outdated_compat(compat_str::String)
+    is_outdated_compat(compat_str::String, pkg_name::String)
 
-Check if a compat string indicates an outdated version.
+Check if a compat string indicates an outdated version by comparing to the latest release.
 """
-function is_outdated_compat(compat_str::String)
-    # Extract the minimum version
-    m = match(r"^[\^~]?(\d+)\.(\d+)", compat_str)
-    if m !== nothing
-        major = parse(Int, m.captures[1])
-        minor = parse(Int, m.captures[2])
-        
+function is_outdated_compat(compat_str::String, pkg_name::String)
+    if isempty(compat_str)
+        return true  # No compat is outdated
+    end
+    
+    # Extract the minimum version from compat
+    min_version = extract_min_version_from_compat(compat_str)
+    if min_version === nothing
+        return false  # Can't parse, assume it's ok
+    end
+    
+    # Get the latest version
+    latest_version = get_latest_version(pkg_name)
+    if latest_version === nothing
+        # Can't determine latest, fall back to heuristic
         # Very old 0.x versions
-        if major == 0 && minor < 5
+        if min_version.major == 0 && min_version.minor < 5
+            return true
+        end
+        return false
+    end
+    
+    # Check if the minimum version is significantly behind the latest
+    if min_version.major < latest_version.major
+        return true  # Major version behind
+    elseif min_version.major == latest_version.major && min_version.minor < latest_version.minor
+        # For 0.x packages, being behind on minor is significant
+        if min_version.major == 0
+            return true
+        end
+        # For stable packages, only flag if significantly behind (e.g., more than 5 minor versions)
+        if latest_version.minor - min_version.minor > 5
             return true
         end
     end
     
     return false
+end
+
+"""
+    extract_min_version_from_compat(compat_str::String)
+
+Extract the minimum version from a compat string.
+"""
+function extract_min_version_from_compat(compat_str::String)
+    # Remove leading ^ or ~
+    compat_str = lstrip(compat_str, ['^', '~'])
+    
+    # Handle comma-separated ranges (take first)
+    if occursin(",", compat_str)
+        compat_str = strip(split(compat_str, ",")[1])
+    end
+    
+    # Handle dash ranges (take lower bound)
+    if occursin("-", compat_str)
+        compat_str = strip(split(compat_str, "-")[1])
+    end
+    
+    # Parse version
+    try
+        # Add .0 if needed to make valid version
+        parts = split(compat_str, ".")
+        if length(parts) == 1
+            compat_str *= ".0.0"
+        elseif length(parts) == 2
+            compat_str *= ".0"
+        end
+        
+        return VersionNumber(compat_str)
+    catch
+        return nothing
+    end
 end
 
 """
@@ -167,7 +225,7 @@ function get_smart_min_version(pkg_name::String, current_compat::String)
     end
     
     # Fallback: bump the current version
-    return bump_compat_version(current_compat)
+    return bump_compat_version(current_compat, pkg_name)
 end
 
 """
@@ -198,27 +256,58 @@ function get_latest_version(pkg_name::String)
 end
 
 """
-    bump_compat_version(compat_str::String)
+    bump_compat_version(compat_str::String, pkg_name::String)
 
-Bump a compat version string conservatively.
+Bump a compat version string conservatively, ensuring we don't go above the current release.
 """
-function bump_compat_version(compat_str::String)
-    # Extract version
-    m = match(r"(\d+)\.(\d+)", compat_str)
-    if m === nothing
+function bump_compat_version(compat_str::String, pkg_name::String)
+    # Extract current minimum version
+    current_min = extract_min_version_from_compat(compat_str)
+    if current_min === nothing
+        # Can't parse, try to get latest
+        latest = get_latest_version(pkg_name)
+        if latest !== nothing
+            if latest.major == 0
+                return string(latest)
+            else
+                return "$(latest.major).0"
+            end
+        end
         return compat_str
     end
     
-    major = parse(Int, m.captures[1])
-    minor = parse(Int, m.captures[2])
-    
-    if major == 0
-        # Bump minor for 0.x
-        return "0.$(minor + 1)"
-    else
-        # Keep major.0 for stable
-        return "$major.0"
+    # Get the latest version
+    latest_version = get_latest_version(pkg_name)
+    if latest_version === nothing
+        # Can't get latest, bump conservatively
+        if current_min.major == 0
+            return "0.$(current_min.minor + 1)"
+        else
+            return "$(current_min.major).0"
+        end
     end
+    
+    # Determine the new version
+    new_version = if current_min.major == 0
+        # For 0.x packages, bump to next minor or latest, whichever is lower
+        next_minor = VersionNumber("0.$(current_min.minor + 1).0")
+        if next_minor <= latest_version
+            string(next_minor)
+        else
+            string(latest_version)
+        end
+    else
+        # For stable packages, use major.0 or latest, whichever is lower
+        major_zero = VersionNumber("$(current_min.major).0.0")
+        if major_zero <= latest_version
+            "$(current_min.major).0"
+        else
+            # If we're already at or above latest, just use latest
+            string(latest_version)
+        end
+    end
+    
+    return new_version
 end
 
 """

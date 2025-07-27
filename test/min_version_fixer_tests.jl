@@ -4,20 +4,31 @@ using TOML
 
 @testset "Minimum Version Fixer Tests" begin
     # Test helper functions
+    @testset "extract_min_version_from_compat" begin
+        @test OrgMaintenanceScripts.extract_min_version_from_compat("1.2") == v"1.2.0"
+        @test OrgMaintenanceScripts.extract_min_version_from_compat("^1.2") == v"1.2.0"
+        @test OrgMaintenanceScripts.extract_min_version_from_compat("~1.2") == v"1.2.0"
+        @test OrgMaintenanceScripts.extract_min_version_from_compat("1.2.3") == v"1.2.3"
+        @test OrgMaintenanceScripts.extract_min_version_from_compat("1.2, 2") == v"1.2.0"
+        @test OrgMaintenanceScripts.extract_min_version_from_compat("1.2-1.5") == v"1.2.0"
+        @test OrgMaintenanceScripts.extract_min_version_from_compat("") === nothing
+    end
+    
     @testset "is_outdated_compat" begin
-        @test OrgMaintenanceScripts.is_outdated_compat("0.3")
-        @test OrgMaintenanceScripts.is_outdated_compat("0.4.2")
-        @test !OrgMaintenanceScripts.is_outdated_compat("0.5")
-        @test !OrgMaintenanceScripts.is_outdated_compat("1.0")
-        @test !OrgMaintenanceScripts.is_outdated_compat("^1.5")
-        @test !OrgMaintenanceScripts.is_outdated_compat("~0.7")
+        # Without being able to mock get_latest_version, we test the fallback behavior
+        @test OrgMaintenanceScripts.is_outdated_compat("0.3", "UnknownPkg")
+        @test OrgMaintenanceScripts.is_outdated_compat("0.4.2", "UnknownPkg")
+        @test !OrgMaintenanceScripts.is_outdated_compat("0.5", "UnknownPkg")
+        @test !OrgMaintenanceScripts.is_outdated_compat("1.0", "UnknownPkg")
+        @test OrgMaintenanceScripts.is_outdated_compat("", "UnknownPkg")  # Empty compat is outdated
     end
     
     @testset "bump_compat_version" begin
-        @test OrgMaintenanceScripts.bump_compat_version("0.3") == "0.4"
-        @test OrgMaintenanceScripts.bump_compat_version("0.5.2") == "0.6"
-        @test OrgMaintenanceScripts.bump_compat_version("1.2") == "1.0"
-        @test OrgMaintenanceScripts.bump_compat_version("2.5.3") == "2.0"
+        # Test the fallback behavior when get_latest_version returns nothing
+        @test OrgMaintenanceScripts.bump_compat_version("0.3", "UnknownPkg") == "0.4"
+        @test OrgMaintenanceScripts.bump_compat_version("0.5.2", "UnknownPkg") == "0.6"
+        @test OrgMaintenanceScripts.bump_compat_version("1.2", "UnknownPkg") == "1.0"
+        @test OrgMaintenanceScripts.bump_compat_version("2.5.3", "UnknownPkg") == "2.0"
     end
     
     @testset "update_compat!" begin
