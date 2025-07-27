@@ -22,7 +22,9 @@ makedocs(;
     pages = ["Home" => "index.md", 
              "Formatting Maintenance" => "formatting.md",
              "Version Bumping" => "version_bumping.md",
-             "Minimum Version Fixing" => "min_version_fixing.md"],
+             "Compat Bumping" => "compat_bumping.md",
+             "Minimum Version Fixing" => "min_version_fixing.md",
+             "Version Check Finder" => "version_check_finder.md"],
 )
 
 deploydocs(; repo = "github.com/SciML/OrgMaintenanceScripts.jl", devbranch = "main")
