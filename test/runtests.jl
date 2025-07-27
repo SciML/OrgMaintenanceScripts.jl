@@ -122,4 +122,5 @@ using TOML
     end
 
     include("formatting_tests.jl")
+    include("version_check_finder_tests.jl")
 end

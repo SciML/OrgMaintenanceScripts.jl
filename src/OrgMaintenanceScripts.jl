@@ -10,9 +10,16 @@ using Dates
 export bump_and_register_repo, bump_and_register_org
 export format_repository, format_org_repositories
 export update_manifests, update_project_tomls
+export find_version_checks_in_file, find_version_checks_in_repo, find_version_checks_in_org
+export write_version_checks_to_script, write_org_version_checks_to_script
+export fix_version_checks_parallel, fix_org_version_checks_parallel
+export VersionCheck
 
 # Include formatting functionality
 include("formatting.jl")
+
+# Include version check finder functionality
+include("version_check_finder.jl")
 
 """
     bump_minor_version(version_str::String) -> String

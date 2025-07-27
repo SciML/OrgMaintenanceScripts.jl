@@ -13,6 +13,7 @@ This package provides maintenance scripts for SciML organization repositories, i
 - **Code Formatting**: Automated formatting with JuliaFormatter across entire organizations
 - **Version Bumping**: Automatically bump minor versions in Project.toml files
 - **Package Registration**: Register packages to Julia registries
+- **Version Check Finder**: Find and remove obsolete Julia version compatibility checks
 - **Organization-wide Operations**: Process entire organizations at once
 
 ## Usage Examples
@@ -60,7 +61,7 @@ end
 ## Contents
 
 ```@contents
-Pages = ["formatting.md"]
+Pages = ["formatting.md", "version_check_finder.md"]
 Depth = 2
 ```
 
