@@ -5,12 +5,14 @@ version = "1.0.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 LibGit2 = "76f85450-5226-5b5a-8eaa-529ad045b433"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+SnoopCompileCore = "e2b509da-e806-4183-be48-004708413034"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
