@@ -234,22 +234,27 @@ end
 Get the latest version of a package from the registry.
 """
 function get_latest_version(pkg_name::String)
-    mktempdir() do tmpdir
-        Pkg.activate(tmpdir)
-        Pkg.add(pkg_name; io=devnull)
-        
-        manifest = Pkg.TOML.parsefile(joinpath(tmpdir, "Manifest.toml"))
-        
-        # Look for the package in manifest
-        for (name, entries) in manifest
-            if name == pkg_name
-                if isa(entries, Vector) && !isempty(entries)
-                    return VersionNumber(entries[1]["version"])
-                elseif isa(entries, Dict) && haskey(entries, "version")
-                    return VersionNumber(entries["version"])
+    try
+        mktempdir() do tmpdir
+            Pkg.activate(tmpdir)
+            Pkg.add(pkg_name; io=devnull)
+            
+            manifest = Pkg.TOML.parsefile(joinpath(tmpdir, "Manifest.toml"))
+            
+            # Look for the package in manifest
+            for (name, entries) in manifest
+                if name == pkg_name
+                    if isa(entries, Vector) && !isempty(entries)
+                        return VersionNumber(entries[1]["version"])
+                    elseif isa(entries, Dict) && haskey(entries, "version")
+                        return VersionNumber(entries["version"])
+                    end
                 end
             end
         end
+    catch e
+        # Package not found in registry or other error
+        return nothing
     end
     
     return nothing
