@@ -160,6 +160,36 @@ function parse_compat_upper_bound(compat_spec::String)
 end
 
 """
+    get_available_compat_updates_all(repo_path::String)
+
+Check for available compat updates in all Project.toml files in a repository.
+Returns a Dict mapping project paths to vectors of CompatUpdate structs.
+"""
+function get_available_compat_updates_all(repo_path::String)
+    all_updates = Dict{String, Vector{CompatUpdate}}()
+    
+    # Find all Project.toml files
+    project_files = find_all_project_tomls(repo_path)
+    
+    if isempty(project_files)
+        @warn "No Project.toml files found in $repo_path"
+        return all_updates
+    end
+    
+    for project_path in project_files
+        rel_path = get_relative_project_path(project_path, repo_path)
+        updates = get_available_compat_updates(project_path)
+        
+        if !isempty(updates)
+            all_updates[rel_path] = updates
+            @info "Found $(length(updates)) updates in $rel_path"
+        end
+    end
+    
+    return all_updates
+end
+
+"""
     bump_compat_entry(project_path::String, package_name::String, new_version::String)
 
 Bump a single compat entry in Project.toml to allow the new version.
@@ -440,15 +470,256 @@ function create_compat_pr(repo_path::String, bumped_packages::Vector{String}, fo
 end
 
 """
+    bump_compat_and_test_all(repo_path::String;
+                            package_name::Union{String,Nothing} = nothing,
+                            bump_all::Bool = false,
+                            create_pr::Bool = true,
+                            fork_user::String = "",
+                            include_subpackages::Bool = true)
+
+Bump compat entries for major version updates in all Project.toml files in a repository.
+This function supports repositories with subpackages in the /lib directory.
+
+# Arguments
+- `repo_path`: Path to the repository
+- `package_name`: Specific package to bump across all Project.toml files
+- `bump_all`: Whether to bump all available updates or just one per Project.toml
+- `create_pr`: Whether to create a PR if tests pass
+- `fork_user`: GitHub username for creating PRs (required if create_pr=true)
+- `include_subpackages`: Whether to include subpackages in /lib directory
+
+# Returns
+- `(success::Bool, message::String, pr_url::Union{String,Nothing}, bumped_info::Dict)`
+"""
+function bump_compat_and_test_all(repo_path::String;
+                                 package_name::Union{String,Nothing} = nothing,
+                                 bump_all::Bool = false,
+                                 create_pr::Bool = true,
+                                 fork_user::String = "",
+                                 include_subpackages::Bool = true)
+    
+    if create_pr && isempty(fork_user)
+        return (false, "fork_user must be provided when create_pr=true", nothing, Dict())
+    end
+    
+    # Find all Project.toml files
+    project_files = find_all_project_tomls(repo_path)
+    
+    if isempty(project_files)
+        return (false, "No Project.toml files found in repository", nothing, Dict())
+    end
+    
+    if !include_subpackages
+        # Filter out subpackages
+        project_files = filter(p -> !is_subpackage(p, repo_path), project_files)
+    end
+    
+    # Get available updates for all projects
+    all_updates = Dict{String, Vector{CompatUpdate}}()
+    for project_path in project_files
+        rel_path = get_relative_project_path(project_path, repo_path)
+        updates = get_available_compat_updates(project_path)
+        
+        # Filter by package name if specified
+        if !isnothing(package_name)
+            updates = filter(u -> u.package_name == package_name, updates)
+        end
+        
+        if !isempty(updates)
+            all_updates[rel_path] = updates
+        end
+    end
+    
+    if isempty(all_updates)
+        return (true, "No major version updates available", nothing, Dict())
+    end
+    
+    # Create branch if not on one
+    cd(repo_path) do
+        current_branch = strip(read(`git branch --show-current`, String))
+        if current_branch in ["main", "master"]
+            timestamp = Dates.format(now(), "yyyymmdd-HHMMSS")
+            branch_name = "compat-bump-all-$timestamp"
+            run(`git checkout -b $branch_name`)
+        end
+    end
+    
+    # Apply updates to each Project.toml
+    bumped_info = Dict{String, Vector{String}}()
+    total_bumped = 0
+    
+    for (rel_path, updates) in all_updates
+        project_path = joinpath(repo_path, rel_path)
+        updates_to_apply = bump_all ? updates : [first(updates)]
+        bumped_packages = String[]
+        
+        for update in updates_to_apply
+            try
+                @info "Bumping compat in $rel_path for $(update.package_name)"
+                bump_compat_entry(project_path, update.package_name, update.latest_version)
+                push!(bumped_packages, update.package_name)
+                total_bumped += 1
+            catch e
+                @error "Failed to bump $(update.package_name) in $rel_path" exception=e
+            end
+        end
+        
+        if !isempty(bumped_packages)
+            bumped_info[rel_path] = bumped_packages
+        end
+    end
+    
+    if total_bumped == 0
+        return (false, "Failed to bump any packages", nothing, Dict())
+    end
+    
+    # Update manifests for all affected projects
+    for (rel_path, _) in bumped_info
+        project_dir = dirname(joinpath(repo_path, rel_path))
+        cd(project_dir) do
+            try
+                @info "Updating manifest for $rel_path"
+                run(`julia --project=. -e "using Pkg; Pkg.update()"`)
+            catch e
+                @warn "Failed to update manifest for $rel_path" exception=e
+            end
+        end
+    end
+    
+    # Run tests
+    @info "Running tests..."
+    test_passed = run_package_tests(repo_path)
+    
+    if !test_passed
+        @warn "Tests failed after bumping compat"
+        return (false, "Tests failed after bumping compat", nothing, bumped_info)
+    end
+    
+    @info "Tests passed!"
+    
+    # Commit changes
+    cd(repo_path) do
+        # Add all modified files
+        run(`git add -A`)
+        
+        commit_message = """
+        CompatHelper: bump compat across multiple packages
+        
+        Updated compat entries in $(length(bumped_info)) Project.toml files:
+        $(join(["- $path: $(join(pkgs, ", "))" for (path, pkgs) in bumped_info], "\n"))
+        
+        All tests pass with updated dependencies.
+        
+        🤖 Generated by OrgMaintenanceScripts.jl
+        """
+        
+        run(`git config user.email "sciml-bot@julialang.org"`)
+        run(`git config user.name "SciML Bot"`)
+        
+        open("commit_msg.txt", "w") do f
+            print(f, commit_message)
+        end
+        run(`git commit -F commit_msg.txt`)
+        rm("commit_msg.txt")
+    end
+    
+    # Create PR if requested
+    pr_url = nothing
+    if create_pr
+        all_packages = reduce(vcat, values(bumped_info))
+        pr_url = create_compat_pr_multi(repo_path, bumped_info, fork_user)
+    end
+    
+    return (true, "Successfully bumped compat and tests passed", pr_url, bumped_info)
+end
+
+"""
+    create_compat_pr_multi(repo_path::String, bumped_info::Dict{String, Vector{String}}, fork_user::String)
+
+Create a pull request for compat updates across multiple Project.toml files.
+"""
+function create_compat_pr_multi(repo_path::String, bumped_info::Dict{String, Vector{String}}, fork_user::String)
+    cd(repo_path) do
+        # Get repo info
+        remote_url = strip(read(`git remote get-url origin`, String))
+        m = match(r"github\.com[/:]([^/]+)/([^/]+?)(?:\.git)?$", remote_url)
+        if m === nothing
+            @error "Could not parse repository URL"
+            return nothing
+        end
+        org, repo = m.captures
+        
+        # Push to fork
+        current_branch = strip(read(`git branch --show-current`, String))
+        fork_url = "https://github.com/$fork_user/$repo.git"
+        
+        try
+            run(`git remote add fork $fork_url`)
+        catch
+            # Fork remote might already exist
+        end
+        
+        run(`git push fork $current_branch --force`)
+        
+        # Create PR
+        total_packages = sum(length(pkgs) for pkgs in values(bumped_info))
+        pr_title = "CompatHelper: bump compat for $total_packages packages across $(length(bumped_info)) Project.toml files"
+        
+        pr_body = """
+        ## Summary
+        This PR updates compat entries to allow the latest major versions of dependencies across multiple Project.toml files.
+        
+        ### Updated files and packages:
+        """
+        
+        for (rel_path, packages) in sort(collect(bumped_info))
+            pr_body *= "\n#### $rel_path\n"
+            for pkg in packages
+                pr_body *= "- **$pkg**\n"
+            end
+        end
+        
+        pr_body *= """
+        
+        ## Testing
+        ✅ All tests pass with the updated dependencies
+        
+        ## Notes
+        - This update was generated automatically by OrgMaintenanceScripts.jl
+        - The compat entries have been updated to allow the latest major versions
+        - All Manifest.toml files have been updated accordingly
+        
+        🤖 Generated by OrgMaintenanceScripts.jl
+        """
+        
+        open("pr_body.txt", "w") do f
+            print(f, pr_body)
+        end
+        
+        try
+            pr_output = read(`gh pr create --repo $org/$repo --head $fork_user:$current_branch --title "$pr_title" --body-file pr_body.txt`, String)
+            rm("pr_body.txt")
+            return strip(pr_output)
+        catch e
+            rm("pr_body.txt")
+            @error "Failed to create PR" exception=e
+            return nothing
+        end
+    end
+end
+
+"""
     bump_compat_org_repositories(org::String = "SciML";
                                 package_name::Union{String,Nothing} = nothing,
                                 bump_all::Bool = false,
                                 create_pr::Bool = true,
                                 fork_user::String = "",
                                 limit::Int = 100,
-                                log_file::String = "")
+                                log_file::String = "",
+                                include_subpackages::Bool = true)
 
 Bump compat entries for all repositories in a GitHub organization.
+This function now supports repositories with subpackages in /lib directories.
 
 # Arguments
 - `org`: GitHub organization name (default: "SciML")
@@ -458,6 +729,7 @@ Bump compat entries for all repositories in a GitHub organization.
 - `fork_user`: GitHub username for creating PRs (required if create_pr=true)
 - `limit`: Maximum number of repositories to process
 - `log_file`: Path to save results log (default: auto-generated)
+- `include_subpackages`: Whether to include subpackages in /lib directories
 
 # Returns
 - `(successes::Vector{String}, failures::Vector{String}, pr_urls::Vector{String})`
@@ -468,7 +740,8 @@ function bump_compat_org_repositories(org::String = "SciML";
                                      create_pr::Bool = true,
                                      fork_user::String = "",
                                      limit::Int = 100,
-                                     log_file::String = "")
+                                     log_file::String = "",
+                                     include_subpackages::Bool = true)
     
     if create_pr && isempty(fork_user)
         error("fork_user must be provided when create_pr=true")
@@ -525,36 +798,74 @@ function bump_compat_org_repositories(org::String = "SciML";
                 run(`git clone --depth 1 $repo_url $repo_path`)
                 
                 # Check for Julia package
-                if !isfile(joinpath(repo_path, "Project.toml"))
+                project_files = find_all_project_tomls(repo_path)
+                if isempty(project_files)
                     println(log_io, "⚠️  SKIPPED: Not a Julia package (no Project.toml)")
                     continue
                 end
                 
-                # Bump compat and test
-                success, message, pr_url, bumped = bump_compat_and_test(
-                    repo_path;
-                    package_name = package_name,
-                    bump_all = bump_all,
-                    create_pr = create_pr,
-                    fork_user = fork_user
-                )
+                # Determine whether to use multi-project or single-project function
+                use_multi = include_subpackages && length(project_files) > 1
                 
-                if success && !isempty(bumped)
-                    push!(successes, repo)
-                    if !isnothing(pr_url)
-                        push!(pr_urls, pr_url)
-                        println(log_io, "✓ SUCCESS: $message")
-                        println(log_io, "  Bumped: $(join(bumped, ", "))")
-                        println(log_io, "  PR: $pr_url")
+                if use_multi
+                    # Use multi-project aware function
+                    success, message, pr_url, bumped_info = bump_compat_and_test_all(
+                        repo_path;
+                        package_name = package_name,
+                        bump_all = bump_all,
+                        create_pr = create_pr,
+                        fork_user = fork_user,
+                        include_subpackages = include_subpackages
+                    )
+                    
+                    if success && !isempty(bumped_info)
+                        push!(successes, repo)
+                        if !isnothing(pr_url)
+                            push!(pr_urls, pr_url)
+                            println(log_io, "✓ SUCCESS: $message")
+                            for (rel_path, pkgs) in bumped_info
+                                println(log_io, "  $rel_path: $(join(pkgs, ", "))")
+                            end
+                            println(log_io, "  PR: $pr_url")
+                        else
+                            println(log_io, "✓ SUCCESS: $message")
+                            for (rel_path, pkgs) in bumped_info
+                                println(log_io, "  $rel_path: $(join(pkgs, ", "))")
+                            end
+                        end
+                    elseif success && isempty(bumped_info)
+                        println(log_io, "⚠️  SKIPPED: $message")
                     else
-                        println(log_io, "✓ SUCCESS: $message")
-                        println(log_io, "  Bumped: $(join(bumped, ", "))")
+                        push!(failures, repo)
+                        println(log_io, "✗ FAILED: $message")
                     end
-                elseif success && isempty(bumped)
-                    println(log_io, "⚠️  SKIPPED: $message")
                 else
-                    push!(failures, repo)
-                    println(log_io, "✗ FAILED: $message")
+                    # Use original single-project function
+                    success, message, pr_url, bumped = bump_compat_and_test(
+                        repo_path;
+                        package_name = package_name,
+                        bump_all = bump_all,
+                        create_pr = create_pr,
+                        fork_user = fork_user
+                    )
+                    
+                    if success && !isempty(bumped)
+                        push!(successes, repo)
+                        if !isnothing(pr_url)
+                            push!(pr_urls, pr_url)
+                            println(log_io, "✓ SUCCESS: $message")
+                            println(log_io, "  Bumped: $(join(bumped, ", "))")
+                            println(log_io, "  PR: $pr_url")
+                        else
+                            println(log_io, "✓ SUCCESS: $message")
+                            println(log_io, "  Bumped: $(join(bumped, ", "))")
+                        end
+                    elseif success && isempty(bumped)
+                        println(log_io, "⚠️  SKIPPED: $message")
+                    else
+                        push!(failures, repo)
+                        println(log_io, "✗ FAILED: $message")
+                    end
                 end
                 
             catch e

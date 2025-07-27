@@ -20,6 +20,41 @@ function bump_minor_version(version_str::String)
 end
 
 """
+    update_project_versions_all(repo_path::String; include_subpackages::Bool=true)
+
+Update the version in all Project.toml files in a repository by bumping the minor version.
+Supports repositories with subpackages in /lib directories.
+Returns a Dict mapping relative paths to (old_version, new_version) tuples.
+"""
+function update_project_versions_all(repo_path::String; include_subpackages::Bool=true)
+    # Find all Project.toml files
+    project_files = find_all_project_tomls(repo_path)
+    
+    if isempty(project_files)
+        @warn "No Project.toml files found in $repo_path"
+        return Dict{String, Tuple{String, String}}()
+    end
+    
+    if !include_subpackages
+        # Filter out subpackages
+        project_files = filter(p -> !is_subpackage(p, repo_path), project_files)
+    end
+    
+    updates = Dict{String, Tuple{String, String}}()
+    
+    for project_path in project_files
+        rel_path = get_relative_project_path(project_path, repo_path)
+        result = update_project_version(project_path)
+        
+        if !isnothing(result)
+            updates[rel_path] = result
+        end
+    end
+    
+    return updates
+end
+
+"""
     update_project_version(project_path::String)
 
 Update the version in a Project.toml file by bumping the minor version.

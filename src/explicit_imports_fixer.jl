@@ -7,6 +7,42 @@ using ExplicitImports
 using JSON3
 
 """
+    run_explicit_imports_check_all(repo_path::String; verbose=true, include_subpackages=true)
+
+Run ExplicitImports.jl checks on all packages in a repository.
+Supports repositories with subpackages in /lib directories.
+Returns a Dict mapping relative paths to (success, report, issues) tuples.
+"""
+function run_explicit_imports_check_all(repo_path::String; verbose=true, include_subpackages=true)
+    # Find all Project.toml files
+    project_files = find_all_project_tomls(repo_path)
+    
+    if isempty(project_files)
+        @warn "No Project.toml files found in $repo_path"
+        return Dict{String, Tuple{Bool, String, Vector}}()
+    end
+    
+    if !include_subpackages
+        # Filter out subpackages
+        project_files = filter(p -> !is_subpackage(p, repo_path), project_files)
+    end
+    
+    results = Dict{String, Tuple{Bool, String, Vector}}()
+    
+    for project_path in project_files
+        rel_path = get_relative_project_path(project_path, repo_path)
+        package_path = dirname(project_path)
+        
+        @info "Checking explicit imports for $rel_path"
+        
+        success, report, issues = run_explicit_imports_check(package_path; verbose)
+        results[rel_path] = (success, report, issues)
+    end
+    
+    return results
+end
+
+"""
     run_explicit_imports_check(package_path::String; verbose=true)
 
 Run ExplicitImports.jl checks on a package and return the report.
