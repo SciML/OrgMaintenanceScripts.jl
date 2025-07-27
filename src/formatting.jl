@@ -2,19 +2,8 @@
 
 using Pkg
 using Dates
+using JuliaFormatter
 
-"""
-    ensure_juliaformatter()
-
-Ensure JuliaFormatter is available in the current environment.
-"""
-function ensure_juliaformatter()
-    if !haskey(Pkg.project().dependencies, "JuliaFormatter")
-        @info "Installing JuliaFormatter..."
-        Pkg.add("JuliaFormatter")
-    end
-    @eval using JuliaFormatter
-end
 
 """
     format_repository(repo_url::String; 
@@ -45,8 +34,6 @@ function format_repository(
     fork_user::String = "",
     working_dir::String = mktempdir(),
 )
-
-    ensure_juliaformatter()
 
     # Validate inputs
     if create_pr && isempty(fork_user)
@@ -296,8 +283,6 @@ function format_org_repositories(
     only_failing_ci::Bool = true,
     log_file::String = "",
 )
-
-    ensure_juliaformatter()
 
     # Set up logging
     if isempty(log_file)
