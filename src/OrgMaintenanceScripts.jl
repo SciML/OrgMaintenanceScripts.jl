@@ -4,6 +4,9 @@ using Pkg
 using TOML
 using Dates
 
+# Include project utilities for handling multiple Project.toml files
+include("project_utils.jl")
+
 # Include formatting functionality
 include("formatting.jl")
 
@@ -24,11 +27,15 @@ include("explicit_imports_fixer.jl")
 
 export bump_and_register_repo, bump_and_register_org
 export format_repository, format_org_repositories
-export update_manifests, update_project_tomls
+export update_manifests, update_project_tomls, update_project_versions_all
 export fix_package_min_versions, fix_repo_min_versions, fix_org_min_versions
+export fix_package_min_versions_all
 export get_available_compat_updates, bump_compat_and_test, bump_compat_org_repositories
+export get_available_compat_updates_all, bump_compat_and_test_all
 export find_version_checks_in_file, find_version_checks_in_repo, find_version_checks_in_org
 export print_version_check_summary, VersionCheck
 export fix_explicit_imports, fix_repo_explicit_imports, fix_org_explicit_imports
+export run_explicit_imports_check_all
+export find_all_project_tomls, get_project_info, is_subpackage, get_relative_project_path
 
 end # module OrgMaintenanceScripts

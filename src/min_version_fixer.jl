@@ -401,6 +401,63 @@ function update_compat!(project_toml::Dict, updates::Dict{String, String})
 end
 
 """
+    fix_package_min_versions_all(repo_path::String;
+                                max_iterations=10,
+                                work_dir=mktempdir(),
+                                julia_version="1.10",
+                                include_subpackages=true)
+
+Fix minimum versions for all Project.toml files in a repository.
+Supports repositories with subpackages in the /lib directory.
+Returns (success::Bool, all_updates::Dict{String,Dict{String,String}})
+"""
+function fix_package_min_versions_all(repo_path::String;
+                                     max_iterations::Int=10,
+                                     work_dir::String=mktempdir(),
+                                     julia_version::String="1.10",
+                                     include_subpackages::Bool=true)
+    
+    # Find all Project.toml files
+    project_files = find_all_project_tomls(repo_path)
+    
+    if isempty(project_files)
+        @warn "No Project.toml files found in $repo_path"
+        return false, Dict{String,Dict{String,String}}()
+    end
+    
+    if !include_subpackages
+        # Filter out subpackages
+        project_files = filter(p -> !is_subpackage(p, repo_path), project_files)
+    end
+    
+    all_updates = Dict{String,Dict{String,String}}()
+    all_success = true
+    
+    for project_file in project_files
+        rel_path = get_relative_project_path(project_file, repo_path)
+        project_dir = dirname(project_file)
+        
+        @info "Fixing minimum versions for $rel_path"
+        
+        # Fix minimum versions for this project
+        success, updates = fix_package_min_versions(project_dir;
+                                                   max_iterations,
+                                                   work_dir,
+                                                   julia_version)
+        
+        if !isempty(updates)
+            all_updates[rel_path] = updates
+        end
+        
+        if !success
+            all_success = false
+        end
+    end
+    
+    return all_success, all_updates
+end
+
+"""
     fix_package_min_versions(repo_path::String; 
                             max_iterations=10, 
                             work_dir=mktempdir(),
@@ -496,15 +553,18 @@ end
                          work_dir=mktempdir(),
                          max_iterations=10,
                          create_pr=true,
-                         julia_version="1.10")
+                         julia_version="1.10",
+                         include_subpackages=true)
 
 Clone a repository, fix its minimum versions, and optionally create a PR.
+Now supports repositories with subpackages in /lib directories.
 """
 function fix_repo_min_versions(repo_name::String;
                               work_dir::String=mktempdir(),
                               max_iterations::Int=10,
                               create_pr::Bool=true,
-                              julia_version::String="1.10")
+                              julia_version::String="1.10",
+                              include_subpackages::Bool=true)
     
     # Clone repository
     repo_dir = joinpath(work_dir, replace(repo_name, "/" => "_"))
@@ -526,43 +586,127 @@ function fix_repo_min_versions(repo_name::String;
         run(`git checkout -b $branch_name`)
     end
     
-    # Fix minimum versions
-    success, updates = fix_package_min_versions(repo_dir; 
-                                               max_iterations, 
-                                               work_dir, 
-                                               julia_version)
+    # Check if this repo has multiple Project.toml files
+    project_files = find_all_project_tomls(repo_dir)
+    use_multi = include_subpackages && length(project_files) > 1
     
-    if !success || isempty(updates)
-        @info "No changes needed for $repo_name"
-        return false
+    if use_multi
+        # Fix minimum versions for all projects
+        success, all_updates = fix_package_min_versions_all(repo_dir; 
+                                                          max_iterations, 
+                                                          work_dir, 
+                                                          julia_version,
+                                                          include_subpackages)
+        
+        if !success || isempty(all_updates)
+            @info "No changes needed for $repo_name"
+            return false
+        end
+        
+        # Commit changes
+        cd(repo_dir) do
+            run(`git add -A`)
+            
+            commit_msg = """
+            Fix minimum version compatibility bounds across multiple packages
+            
+            This commit updates the minimum version bounds in [compat] sections to ensure
+            they can be resolved by the package manager. Updates were made in:
+            
+            """
+            
+            for (rel_path, updates) in sort(collect(all_updates))
+                commit_msg *= "\n$rel_path:\n"
+                for (pkg, ver) in sort(collect(updates))
+                    commit_msg *= "  - $pkg: → $ver\n"
+                end
+            end
+            
+            commit_msg *= """
+            
+            These changes were determined by running the downgrade CI tests and
+            incrementally bumping failing minimum versions to working ones.
+            """
+            
+            run(`git commit -m $commit_msg`)
+        end
+    else
+        # Fix minimum versions for single project
+        success, updates = fix_package_min_versions(repo_dir; 
+                                                   max_iterations, 
+                                                   work_dir, 
+                                                   julia_version)
+        
+        if !success || isempty(updates)
+            @info "No changes needed for $repo_name"
+            return false
+        end
+        
+        # Commit changes
+        cd(repo_dir) do
+            run(`git add Project.toml`)
+            
+            commit_msg = """
+            Fix minimum version compatibility bounds
+            
+            This commit updates the minimum version bounds in [compat] to ensure
+            they can be resolved by the package manager. The following packages
+            were updated:
+            
+            $(join(["- $pkg: → $ver" for (pkg, ver) in sort(collect(updates))], "\n"))
+            
+            These changes were determined by running the downgrade CI tests and
+            incrementally bumping failing minimum versions to working ones.
+            """
+            
+            run(`git commit -m $commit_msg`)
+        end
     end
     
-    # Commit changes
-    cd(repo_dir) do
-        run(`git add Project.toml`)
+    if create_pr
+        @info "Creating pull request..."
         
-        commit_msg = """
-        Fix minimum version compatibility bounds
-        
-        This commit updates the minimum version bounds in [compat] to ensure
-        they can be resolved by the package manager. The following packages
-        were updated:
-        
-        $(join(["- $pkg: → $ver" for (pkg, ver) in sort(collect(updates))], "\n"))
-        
-        These changes were determined by running the downgrade CI tests and
-        incrementally bumping failing minimum versions to working ones.
-        """
-        
-        run(`git commit -m $commit_msg`)
-        
-        if create_pr
-            @info "Creating pull request..."
-            
-            # Push branch
+        # Push branch to origin
+        cd(repo_dir) do
             run(`git push -u origin HEAD`)
+        end
+        
+        # Create PR using GitHub CLI - need to handle multi-project case
+        if use_multi && !isempty(all_updates)
+            pr_title = "Fix minimum version compatibility bounds across multiple packages"
+            pr_body = """
+            ## Summary
             
-            # Create PR using GitHub CLI
+            This PR fixes the minimum version bounds in the `[compat]` sections to ensure all minimum versions can be successfully resolved by Pkg.
+            
+            ## Changes
+            
+            Updates were made in the following Project.toml files:
+            
+            """
+            
+            for (rel_path, updates) in sort(collect(all_updates))
+                pr_body *= "\n### $rel_path\n\n"
+                pr_body *= "| Package | New Minimum Version |\n"
+                pr_body *= "|---------|-------------------|\n"
+                for (pkg, ver) in sort(collect(updates))
+                    pr_body *= "| $pkg | $ver |\n"
+                end
+            end
+            
+            pr_body *= """
+            
+            ## Testing
+            
+            These changes were determined by:
+            1. Running the downgrade CI workflow locally
+            2. Identifying packages that failed to resolve at their minimum versions
+            3. Bumping those packages to known-working minimum versions
+            4. Repeating until all packages resolve successfully
+            
+            This ensures all packages will pass the Downgrade CI tests.
+            """
+        elseif !use_multi && !isempty(updates)
             pr_title = "Fix minimum version compatibility bounds"
             pr_body = """
             ## Summary
@@ -587,9 +731,15 @@ function fix_repo_min_versions(repo_name::String;
             
             This ensures the package will pass the Downgrade CI tests.
             """
-            
+        else
+            # No updates made
+            @info "No PR created as no updates were made"
+            return true
+        end
+        
+        cd(repo_dir) do
             try
-                run(`gh pr create --title $pr_title --body $pr_body`)
+                run(`gh pr create --title "$pr_title" --body "$pr_body"`)
                 @info "✓ Pull request created successfully!"
             catch e
                 @warn "Failed to create PR automatically: $e"
@@ -608,9 +758,11 @@ end
                         create_prs=true,
                         skip_repos=String[],
                         only_repos=nothing,
-                        julia_version="1.10")
+                        julia_version="1.10",
+                        include_subpackages=true)
 
 Fix minimum versions for all Julia packages in a GitHub organization.
+Now supports repositories with subpackages in /lib directories.
 """
 function fix_org_min_versions(org_name::String;
                              work_dir::String=mktempdir(),
@@ -618,7 +770,8 @@ function fix_org_min_versions(org_name::String;
                              create_prs::Bool=true,
                              skip_repos::Vector{String}=String[],
                              only_repos::Union{Nothing,Vector{String}}=nothing,
-                             julia_version::String="1.10")
+                             julia_version::String="1.10",
+                             include_subpackages::Bool=true)
     
     @info "Fetching repositories for organization: $org_name"
     
@@ -660,7 +813,8 @@ function fix_org_min_versions(org_name::String;
                                            work_dir,
                                            max_iterations,
                                            create_pr=create_prs,
-                                           julia_version)
+                                           julia_version,
+                                           include_subpackages)
             results[repo] = success
         catch e
             @error "Failed to process $repo: $e"

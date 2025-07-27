@@ -83,12 +83,13 @@ function find_version_checks_in_file(file_path::String; min_version::VersionNumb
 end
 
 """
-    find_version_checks_in_repo(repo_path::String; min_version::VersionNumber=v"1.10")
+    find_version_checks_in_repo(repo_path::String; min_version::VersionNumber=v"1.10", include_subpackages::Bool=true)
 
 Find all VERSION checks in a repository that compare against versions older than min_version.
+Now includes support for searching in /lib subdirectories when include_subpackages is true.
 Returns a Dict mapping file paths to arrays of VersionCheck objects.
 """
-function find_version_checks_in_repo(repo_path::String; min_version::VersionNumber=v"1.10")
+function find_version_checks_in_repo(repo_path::String; min_version::VersionNumber=v"1.10", include_subpackages::Bool=true)
     all_checks = Dict{String, Vector{VersionCheck}}()
     
     if !isdir(repo_path)
@@ -101,9 +102,20 @@ function find_version_checks_in_repo(repo_path::String; min_version::VersionNumb
         # Skip hidden directories and common non-source directories
         filter!(d -> !startswith(d, ".") && d ∉ ["node_modules", "vendor", "build", "dist"], dirs)
         
+        # Skip lib directory if not including subpackages
+        if !include_subpackages
+            filter!(d -> d != "lib", dirs)
+        end
+        
         for file in files
             if endswith(file, ".jl")
                 file_path = joinpath(root, file)
+                
+                # Skip files in lib if not including subpackages
+                if !include_subpackages && is_subpackage(file_path, repo_path)
+                    continue
+                end
+                
                 checks = find_version_checks_in_file(file_path; min_version)
                 if !isempty(checks)
                     # Store relative path for better readability
@@ -122,7 +134,8 @@ end
                               min_version::VersionNumber=v"1.10",
                               auth_token::String="",
                               work_dir::String=mktempdir(),
-                              max_repos::Union{Nothing,Int}=nothing)
+                              max_repos::Union{Nothing,Int}=nothing,
+                              include_subpackages::Bool=true)
 
 Find all VERSION checks across all repositories in a GitHub organization.
 Returns a Dict mapping repository names to their version check results.
@@ -133,12 +146,14 @@ Returns a Dict mapping repository names to their version check results.
 - `auth_token`: GitHub auth token for API access
 - `work_dir`: Temporary directory for cloning repos
 - `max_repos`: Maximum number of repositories to process (for testing)
+- `include_subpackages`: Whether to include subpackages in /lib directories
 """
 function find_version_checks_in_org(org::String; 
                                    min_version::VersionNumber=v"1.10",
                                    auth_token::String="",
                                    work_dir::String=mktempdir(),
-                                   max_repos::Union{Nothing,Int}=nothing)
+                                   max_repos::Union{Nothing,Int}=nothing,
+                                   include_subpackages::Bool=true)
     
     @info "Fetching repositories for organization: $org"
     repos = get_org_repos(org; auth_token)
@@ -176,7 +191,7 @@ function find_version_checks_in_org(org::String;
             end
             
             # Find version checks
-            checks = find_version_checks_in_repo(repo_dir; min_version)
+            checks = find_version_checks_in_repo(repo_dir; min_version, include_subpackages)
             
             if !isempty(checks)
                 results[repo_name] = checks
