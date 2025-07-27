@@ -19,7 +19,7 @@ makedocs(;
         edit_link = "main",
         assets = String[],
     ),
-    pages = ["Home" => "index.md", "Formatting Maintenance" => "formatting.md"],
+    pages = ["Home" => "index.md", "Version Bumping" => "version_bumping.md", "Formatting Maintenance" => "formatting.md", "Downgrade Compat Fixing" => "min_version_fixing.md"],
 )
 
 deploydocs(; repo = "github.com/SciML/OrgMaintenanceScripts.jl", devbranch = "main")
