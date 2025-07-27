@@ -17,9 +17,12 @@ makedocs(;
         prettyurls = get(ENV, "CI", "false") == "true",
         canonical = "https://docs.sciml.ai/OrgMaintenanceScripts/stable/",
         edit_link = "main",
-        assets = String[],
+        assets = ["assets/favicon.ico"],
     ),
-    pages = ["Home" => "index.md", "Formatting Maintenance" => "formatting.md"],
+    pages = ["Home" => "index.md", 
+             "Formatting Maintenance" => "formatting.md",
+             "Version Bumping" => "version_bumping.md",
+             "Minimum Version Fixing" => "min_version_fixing.md"],
 )
 
 deploydocs(; repo = "github.com/SciML/OrgMaintenanceScripts.jl", devbranch = "main")
