@@ -76,7 +76,7 @@ results = fix_org_min_versions("SciML"; only_repos=["OrdinaryDiffEq.jl", "DiffEq
 ## Contents
 
 ```@contents
-Pages = ["formatting.md", "min_version_fixing.md"]
+Pages = ["formatting.md", "version_bumping.md", "min_version_fixing.md"]
 Depth = 2
 ```
 

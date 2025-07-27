@@ -92,3 +92,9 @@ Pkg.add(url="https://github.com/SciML/OrgMaintenanceScripts.jl")
 ## Documentation
 
 For detailed documentation, see the [docs](https://sciml.github.io/OrgMaintenanceScripts.jl/dev/).
+
+### Available Documentation
+
+- [Code Formatting Guide](https://sciml.github.io/OrgMaintenanceScripts.jl/dev/formatting/) - Automated Julia code formatting
+- [Version Bumping & Registration](https://sciml.github.io/OrgMaintenanceScripts.jl/dev/version_bumping/) - Semantic versioning and package registration
+- [Minimum Version Fixing](https://sciml.github.io/OrgMaintenanceScripts.jl/dev/min_version_fixing/) - Fix compatibility bounds for downgrade CI
