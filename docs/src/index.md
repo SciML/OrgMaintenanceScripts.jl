@@ -1,6 +1,5 @@
 # OrgMaintenanceScripts.jl
 
-![SciML Logo](assets/logo.png)
 
 ```@meta
 CurrentModule = OrgMaintenanceScripts
