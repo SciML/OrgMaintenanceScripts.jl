@@ -19,13 +19,22 @@ function setup_resolver(work_dir::String)
     resolver_path = joinpath(work_dir, "Resolver.jl")
     
     if !isdir(resolver_path)
-        @info "Cloning Resolver.jl..."
+        @info "Cloning Resolver.jl to $resolver_path..."
         run(`git clone $resolver_url $resolver_path`)
         
         # Build Resolver.jl
+        @info "Building Resolver.jl dependencies..."
         cd(resolver_path) do
             run(`julia --project=. -e 'using Pkg; Pkg.instantiate()'`)
         end
+    else
+        @info "Using existing Resolver.jl at $resolver_path"
+    end
+    
+    # Verify resolver is set up correctly
+    resolve_script = joinpath(resolver_path, "bin", "resolve.jl")
+    if !isfile(resolve_script)
+        error("Resolver setup failed: resolve.jl script not found at $resolve_script")
     end
     
     return resolver_path
@@ -54,25 +63,29 @@ function downgrade_to_minimum_versions(project_dir::String; julia_version="1.10"
     # Run resolver to downgrade to minimum versions
     cmd = `julia --project=$resolver_path/bin $resolver_path/bin/resolve.jl $project_dir --min=@$mode --julia=$julia_version`
     
+    @info "Running resolver command: $cmd"
+    
     try
         output = IOBuffer()
-        run(pipeline(cmd; stdout=output, stderr=output))
-        return true, String(take!(output))
-    catch e
         error_output = IOBuffer()
-        if isa(e, Base.ProcessFailedException)
-            # Try to capture stderr
-            try
-                run(pipeline(cmd; stdout=devnull, stderr=error_output))
-            catch
-                # Ignore, we already have the error
-            end
+        process = run(pipeline(cmd; stdout=output, stderr=error_output), wait=false)
+        wait(process)
+        
+        stdout_str = String(take!(output))
+        stderr_str = String(take!(error_output))
+        
+        if process.exitcode == 0
+            @info "Resolver succeeded with output:\n$stdout_str"
+            return true, stdout_str
+        else
+            combined_output = "STDOUT:\n$stdout_str\n\nSTDERR:\n$stderr_str\n\nExit code: $(process.exitcode)"
+            @error "Resolver failed:\n$combined_output"
+            return false, combined_output
         end
-        error_msg = String(take!(error_output))
-        if isempty(error_msg)
-            error_msg = sprint(showerror, e)
-        end
-        return false, error_msg
+    catch e
+        error_msg = sprint(showerror, e, catch_backtrace())
+        @error "Exception while running resolver:\n$error_msg"
+        return false, "Exception: $error_msg"
     end
 end
 
@@ -84,11 +97,15 @@ Test if minimum versions can be resolved using Resolver.jl.
 Returns (success::Bool, error_output::String)
 """
 function test_min_versions(project_dir::String; julia_version="1.10", mode="alldeps", work_dir=mktempdir())
+    @info "Testing minimum versions for $project_dir with Julia $julia_version and mode $mode"
+    
     success, output = downgrade_to_minimum_versions(project_dir; julia_version, mode, work_dir)
     
     if success
+        @info "✓ Successfully resolved minimum versions"
         return true, "Successfully resolved minimum versions"
     else
+        @error "✗ Failed to resolve minimum versions"
         return false, output
     end
 end
@@ -102,18 +119,49 @@ function parse_resolution_errors(output::String, project_toml::Dict)
     problematic = Set{String}()
     deps = get(project_toml, "deps", Dict())
     
-    # Look for package mentions in error output
-    for (pkg_name, _) in deps
-        if occursin(pkg_name, output)
-            push!(problematic, pkg_name)
+    @info "Parsing resolution errors from output"
+    
+    # Common patterns in resolver errors
+    error_patterns = [
+        r"ERROR: Unsatisfiable requirements detected for package (\w+)",
+        r"no version of (\w+) satisfies",
+        r"(\w+) \[[\w-]+\]: no versions left",
+        r"restricted by compatibility requirements with (\w+)",
+        r"package (\w+) has no versions",
+        r"Cannot resolve package (\w+)",
+        r"Unsatisfiable requirements for (\w+)",
+    ]
+    
+    # Look for specific error patterns
+    for pattern in error_patterns
+        for match in eachmatch(pattern, output)
+            pkg_name = match.captures[1]
+            if haskey(deps, pkg_name)
+                @info "Found problematic package from error pattern: $pkg_name"
+                push!(problematic, pkg_name)
+            end
+        end
+    end
+    
+    # Also look for simple package mentions in error lines
+    for line in split(output, '\n')
+        if occursin("ERROR", line) || occursin("WARN", line) || occursin("unsatisfiable", lowercase(line))
+            for (pkg_name, _) in deps
+                if occursin(pkg_name, line)
+                    @info "Found problematic package in error line: $pkg_name"
+                    push!(problematic, pkg_name)
+                end
+            end
         end
     end
     
     # If no specific packages found, check all with low versions
     if isempty(problematic)
+        @info "No specific packages found in errors, checking for outdated compat entries"
         compat = get(project_toml, "compat", Dict())
         for (pkg_name, compat_str) in compat
             if pkg_name != "julia" && is_outdated_compat(compat_str, pkg_name)
+                @info "Found outdated compat for $pkg_name: $compat_str"
                 push!(problematic, pkg_name)
             end
         end
@@ -395,7 +443,8 @@ function fix_package_min_versions(repo_path::String;
             break
         end
         
-        @info "Resolution failed, analyzing..."
+        @info "Resolution failed, analyzing error output..."
+        @info "Full error output:\n$output"
         
         # Find problematic packages
         problematic = parse_resolution_errors(output, project_toml)
