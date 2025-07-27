@@ -14,12 +14,17 @@ export find_version_checks_in_file, find_version_checks_in_repo, find_version_ch
 export write_version_checks_to_script, write_org_version_checks_to_script
 export fix_version_checks_parallel, fix_org_version_checks_parallel
 export VersionCheck
+export analyze_repo_invalidations, analyze_org_invalidations
+export generate_invalidation_report, InvalidationReport, InvalidationEntry
 
 # Include formatting functionality
 include("formatting.jl")
 
 # Include version check finder functionality
 include("version_check_finder.jl")
+
+# Include invalidation analysis functionality
+include("invalidation_analysis.jl")
 
 """
     bump_minor_version(version_str::String) -> String

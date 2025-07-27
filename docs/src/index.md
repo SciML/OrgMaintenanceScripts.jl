@@ -14,6 +14,7 @@ This package provides maintenance scripts for SciML organization repositories, i
 - **Version Bumping**: Automatically bump minor versions in Project.toml files
 - **Package Registration**: Register packages to Julia registries
 - **Version Check Finder**: Find and remove obsolete Julia version compatibility checks
+- **Invalidation Analysis**: Detect and analyze method invalidations using SnoopCompileCore
 - **Organization-wide Operations**: Process entire organizations at once
 
 ## Usage Examples
@@ -61,7 +62,7 @@ end
 ## Contents
 
 ```@contents
-Pages = ["formatting.md", "version_check_finder.md"]
+Pages = ["formatting.md", "version_check_finder.md", "invalidation_analysis.md"]
 Depth = 2
 ```
 

@@ -123,4 +123,5 @@ using TOML
 
     include("formatting_tests.jl")
     include("version_check_finder_tests.jl")
+    include("invalidation_analysis_tests.jl")
 end
