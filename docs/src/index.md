@@ -13,6 +13,7 @@ This package provides maintenance scripts for SciML organization repositories, i
 - **Code Formatting**: Automated formatting with JuliaFormatter across entire organizations
 - **Version Bumping**: Automatically bump minor versions in Project.toml files
 - **Package Registration**: Register packages to Julia registries
+- **Minimum Version Fixing**: Fix minimum version compatibility bounds to pass downgrade CI tests
 - **Organization-wide Operations**: Process entire organizations at once
 
 ## Usage Examples
@@ -57,10 +58,25 @@ for (repo, result) in results
 end
 ```
 
+### Minimum Version Fixing
+
+```julia
+using OrgMaintenanceScripts
+
+# Fix minimum versions for a single repository
+success = fix_repo_min_versions("SciML/OrdinaryDiffEq.jl")
+
+# Fix all repositories in an organization
+results = fix_org_min_versions("SciML")
+
+# Process only specific repositories
+results = fix_org_min_versions("SciML"; only_repos=["OrdinaryDiffEq.jl", "DiffEqBase.jl"])
+```
+
 ## Contents
 
 ```@contents
-Pages = ["formatting.md"]
+Pages = ["formatting.md", "min_version_fixing.md"]
 Depth = 2
 ```
 
