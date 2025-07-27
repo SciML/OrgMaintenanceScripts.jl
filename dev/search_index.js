@@ -1,0 +1,3 @@
+var documenterSearchIndex = {"docs":
+[{"location":"#OrgMaintenanceScripts.jl","page":"Home","title":"OrgMaintenanceScripts.jl","text":"","category":"section"},{"location":"","page":"Home","title":"Home","text":"Documentation for OrgMaintenanceScripts.","category":"page"},{"location":"#Package-Features","page":"Home","title":"Package Features","text":"","category":"section"},{"location":"","page":"Home","title":"Home","text":"This package provides maintenance scripts for SciML organization repositories.","category":"page"},{"location":"#API-Reference","page":"Home","title":"API Reference","text":"","category":"section"},{"location":"","page":"Home","title":"Home","text":"","category":"page"}]
+}
