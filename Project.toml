@@ -1,0 +1,15 @@
+name = "OrgMaintenanceScripts"
+uuid = "87d49508-7ad8-40c6-ae47-b3ac92269cd4"
+authors = ["SciML Contributors"]
+version = "0.1.0"
+
+[deps]
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
