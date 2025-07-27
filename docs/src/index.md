@@ -17,6 +17,7 @@ This package provides maintenance scripts for SciML organization repositories, i
 - **Minimum Version Fixing**: Fix minimum version compatibility bounds to pass downgrade CI tests
 - **Compat Bumping**: Automatically update package compatibility bounds for dependencies
 - **Version Check Finding**: Find outdated VERSION checks that can be removed
+- **Explicit Imports Fixing**: Automatically fix implicit imports and remove unused imports
 - **Organization-wide Operations**: Process entire organizations at once
 
 ## Usage Examples
@@ -116,10 +117,25 @@ print_version_check_summary(results)
 results = find_version_checks_in_org("MyOrg"; min_version=v"1.9", max_repos=10)
 ```
 
+### Explicit Imports Fixing
+
+```julia
+using OrgMaintenanceScripts
+
+# Fix explicit imports in a package
+success, iterations, report = fix_explicit_imports("/path/to/MyPackage.jl")
+
+# Fix and create PR for a repository
+fix_repo_explicit_imports("MyOrg/MyPackage.jl"; create_pr=true)
+
+# Fix all packages in an organization
+results = fix_org_explicit_imports("MyOrg"; create_prs=true)
+```
+
 ## Contents
 
 ```@contents
-Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md"]
+Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md", "explicit_imports_fixing.md"]
 Depth = 2
 ```
 
