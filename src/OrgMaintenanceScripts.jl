@@ -5,8 +5,14 @@ using TOML
 using LibGit2
 using HTTP
 using JSON3
+using Dates
 
 export bump_and_register_repo, bump_and_register_org
+export format_repository, format_org_repositories
+export update_manifests, update_project_tomls
+
+# Include formatting functionality
+include("formatting.jl")
 
 """
     bump_minor_version(version_str::String) -> String

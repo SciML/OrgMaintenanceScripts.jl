@@ -120,4 +120,6 @@ using TOML
         @test_logs (:warn,) OrgMaintenanceScripts.update_manifests()
         @test_logs (:warn,) OrgMaintenanceScripts.update_project_tomls()
     end
+
+    include("formatting_tests.jl")
 end

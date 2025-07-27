@@ -10,13 +10,33 @@ Documentation for [OrgMaintenanceScripts](https://github.com/SciML/OrgMaintenanc
 
 This package provides maintenance scripts for SciML organization repositories, including:
 
-- Automated version bumping for Julia packages
-- Batch registration of packages to Julia registries
-- Organization-wide package maintenance operations
+- **Code Formatting**: Automated formatting with JuliaFormatter across entire organizations
+- **Version Bumping**: Automatically bump minor versions in Project.toml files
+- **Package Registration**: Register packages to Julia registries
+- **Organization-wide Operations**: Process entire organizations at once
 
 ## Usage Examples
 
-### Bump and Register a Single Repository
+### Code Formatting
+
+```julia
+using OrgMaintenanceScripts
+
+# Format a single repository
+success, message, pr_url = format_repository(
+    "https://github.com/SciML/Example.jl.git";
+    fork_user = "myusername"
+)
+
+# Format all repos with failing CI
+successes, failures, pr_urls = format_org_repositories(
+    "SciML";
+    fork_user = "myusername",
+    only_failing_ci = true
+)
+```
+
+### Version Bumping and Registration
 
 ```julia
 using OrgMaintenanceScripts
@@ -26,12 +46,6 @@ result = bump_and_register_repo("/path/to/repo")
 
 println("Registered packages: ", result.registered)
 println("Failed packages: ", result.failed)
-```
-
-### Bump and Register an Entire Organization
-
-```julia
-using OrgMaintenanceScripts
 
 # Process all repositories in the SciML organization
 results = bump_and_register_org("SciML"; auth_token="your_github_token")
@@ -41,6 +55,13 @@ for (repo, result) in results
     println("  Registered: ", result.registered)
     println("  Failed: ", result.failed)
 end
+```
+
+## Contents
+
+```@contents
+Pages = ["formatting.md"]
+Depth = 2
 ```
 
 ## API Reference
