@@ -70,7 +70,7 @@ results = fix_org_min_versions("SciML";
 ```
 
 Features:
-- Tests minimum versions using julia-actions downgrade approach
+- Tests minimum versions by creating temporary environments with minimum constraints
 - Intelligently identifies and fixes problematic minimum versions
 - Creates pull requests with detailed changelogs
 - Smart version detection using registry lookups
