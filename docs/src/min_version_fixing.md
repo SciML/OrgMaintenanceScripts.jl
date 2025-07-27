@@ -5,8 +5,8 @@ The `OrgMaintenanceScripts.jl` package provides tools to automatically fix minim
 ## Overview
 
 The minimum version fixer:
-- Tests if current minimum versions can be resolved by creating a temporary environment
-- Identifies packages with problematic minimum versions by attempting to instantiate with minimum versions
+- Uses Stefan Karpinski's Resolver.jl to test if minimum versions can be resolved
+- Identifies packages with problematic minimum versions through resolver errors
 - Intelligently bumps versions using multiple strategies
 - Creates pull requests with the fixes automatically
 
@@ -132,8 +132,8 @@ The tool uses multiple strategies to determine appropriate minimum versions:
 
 1. **Clone Repository**: Clones the target repository (if needed)
 2. **Create Branch**: Creates a feature branch for the fixes
-3. **Test Resolution**: Creates a temporary environment with minimum versions to test if they resolve
-4. **Identify Issues**: Parses Pkg errors to find problematic packages
+3. **Test Resolution**: Uses Resolver.jl with `--min=@alldeps` to test if minimum versions resolve
+4. **Identify Issues**: Parses resolver errors to find problematic packages
 5. **Apply Fixes**: Intelligently bumps failing minimum versions
 6. **Iterate**: Repeats until all packages resolve
 7. **Create PR**: Commits changes and creates a detailed pull request

@@ -3,18 +3,6 @@ using OrgMaintenanceScripts
 using TOML
 
 @testset "Minimum Version Fixer Tests" begin
-    @testset "parse_min_version_from_compat" begin
-        # Test various compat formats
-        @test OrgMaintenanceScripts.parse_min_version_from_compat("1.2") == v"1.2.0"
-        @test OrgMaintenanceScripts.parse_min_version_from_compat("^1.2") == v"1.2.0"
-        @test OrgMaintenanceScripts.parse_min_version_from_compat("~1.2") == v"1.2.0"
-        @test OrgMaintenanceScripts.parse_min_version_from_compat("1.2.3") == v"1.2.3"
-        @test OrgMaintenanceScripts.parse_min_version_from_compat("1.2, 2") == v"1.2.0"
-        @test OrgMaintenanceScripts.parse_min_version_from_compat("1.2-1.5") == v"1.2.0"
-        @test OrgMaintenanceScripts.parse_min_version_from_compat("") === nothing
-        @test OrgMaintenanceScripts.parse_min_version_from_compat("1") == v"1.0.0"
-    end
-    
     # Test helper functions
     @testset "is_outdated_compat" begin
         @test OrgMaintenanceScripts.is_outdated_compat("0.3")

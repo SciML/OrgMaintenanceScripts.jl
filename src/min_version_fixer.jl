@@ -9,150 +9,88 @@ using JSON3
 
 
 """
-    downgrade_to_minimum_versions(project_dir::String; julia_version="1.10", mode="alldeps")
+    setup_resolver(work_dir::String)
 
-Downgrade all dependencies to their minimum compatible versions.
-This is an integrated implementation of the downgrade functionality.
-Returns (success::Bool, manifest_file::String, error_msg::String)
+Clone and setup Resolver.jl if not already present.
+Returns the path to Resolver.jl.
 """
-function downgrade_to_minimum_versions(project_dir::String; julia_version="1.10", mode="alldeps")
+function setup_resolver(work_dir::String)
+    resolver_url = "https://github.com/StefanKarpinski/Resolver.jl.git"
+    resolver_path = joinpath(work_dir, "Resolver.jl")
+    
+    if !isdir(resolver_path)
+        @info "Cloning Resolver.jl..."
+        run(`git clone $resolver_url $resolver_path`)
+        
+        # Build Resolver.jl
+        cd(resolver_path) do
+            run(`julia --project=. -e 'using Pkg; Pkg.instantiate()'`)
+        end
+    end
+    
+    return resolver_path
+end
+
+"""
+    downgrade_to_minimum_versions(project_dir::String; julia_version="1.10", mode="alldeps", work_dir=mktempdir())
+
+Downgrade all dependencies to their minimum compatible versions using Resolver.jl.
+This uses the same approach as julia-actions/julia-downgrade-compat.
+Returns (success::Bool, output::String)
+"""
+function downgrade_to_minimum_versions(project_dir::String; julia_version="1.10", mode="alldeps", work_dir=mktempdir())
     project_file = joinpath(project_dir, "Project.toml")
     if !isfile(project_file)
-        return false, "", "No Project.toml found in $project_dir"
+        # Also check for JuliaProject.toml
+        project_file = joinpath(project_dir, "JuliaProject.toml")
+        if !isfile(project_file)
+            return false, "No Project.toml or JuliaProject.toml found in $project_dir"
+        end
     end
     
-    # Create a temporary environment for resolution
-    temp_env = mktempdir()
-    temp_project = joinpath(temp_env, "Project.toml")
-    temp_manifest = joinpath(temp_env, "Manifest.toml")
+    # Setup Resolver.jl
+    resolver_path = setup_resolver(work_dir)
+    
+    # Run resolver to downgrade to minimum versions
+    cmd = `julia --project=$resolver_path/bin $resolver_path/bin/resolve.jl $project_dir --min=@$mode --julia=$julia_version`
     
     try
-        # Copy the project file
-        cp(project_file, temp_project)
-        
-        # Read project to get dependencies and compat
-        project_toml = TOML.parsefile(temp_project)
-        deps = get(project_toml, "deps", Dict())
-        compat = get(project_toml, "compat", Dict())
-        
-        # Activate the temporary environment
-        Pkg.activate(temp_env)
-        
-        # Add each dependency with minimum version constraints
-        for (pkg_name, pkg_uuid) in deps
-            compat_str = get(compat, pkg_name, "")
-            
-            # Parse the minimum version from compat
-            min_version = parse_min_version_from_compat(compat_str)
-            
-            if min_version !== nothing
-                # Add with specific version
-                try
-                    Pkg.add(Pkg.PackageSpec(name=pkg_name, version=min_version))
-                catch e
-                    # If exact version fails, try as lower bound
-                    Pkg.add(Pkg.PackageSpec(name=pkg_name, version=">=$min_version"))
-                end
-            else
-                # No compat specified, add without constraint
-                Pkg.add(pkg_name)
+        output = IOBuffer()
+        run(pipeline(cmd; stdout=output, stderr=output))
+        return true, String(take!(output))
+    catch e
+        error_output = IOBuffer()
+        if isa(e, Base.ProcessFailedException)
+            # Try to capture stderr
+            try
+                run(pipeline(cmd; stdout=devnull, stderr=error_output))
+            catch
+                # Ignore, we already have the error
             end
         end
-        
-        # Resolve to get minimum versions
-        Pkg.resolve()
-        
-        # Copy the resolved manifest back
-        if isfile(temp_manifest)
-            resolved_manifest = joinpath(project_dir, "Manifest_minimum.toml")
-            cp(temp_manifest, resolved_manifest, force=true)
-            return true, resolved_manifest, ""
-        else
-            return false, "", "Failed to generate manifest"
+        error_msg = String(take!(error_output))
+        if isempty(error_msg)
+            error_msg = sprint(showerror, e)
         end
-        
-    catch e
-        error_msg = sprint(showerror, e)
-        return false, "", error_msg
-    finally
-        # Return to original environment
-        Pkg.activate()
+        return false, error_msg
     end
 end
 
-"""
-    parse_min_version_from_compat(compat_str::String)
-
-Parse the minimum version from a compat string.
-Examples: "1.2" -> v"1.2.0", "^1.2" -> v"1.2.0", "1.2, 2" -> v"1.2.0"
-"""
-function parse_min_version_from_compat(compat_str::String)
-    if isempty(compat_str)
-        return nothing
-    end
-    
-    # Remove leading ^ or ~
-    compat_str = lstrip(compat_str, ['^', '~'])
-    
-    # Handle comma-separated ranges (take first)
-    if occursin(",", compat_str)
-        compat_str = strip(split(compat_str, ",")[1])
-    end
-    
-    # Handle dash ranges (take lower bound)
-    if occursin("-", compat_str)
-        compat_str = strip(split(compat_str, "-")[1])
-    end
-    
-    # Parse version
-    try
-        # Add .0 if needed to make valid version
-        parts = split(compat_str, ".")
-        if length(parts) == 1
-            compat_str *= ".0.0"
-        elseif length(parts) == 2
-            compat_str *= ".0"
-        end
-        
-        return VersionNumber(compat_str)
-    catch
-        return nothing
-    end
-end
 
 """
-    test_min_versions(project_dir::String; julia_version="1.10", mode="alldeps")
+    test_min_versions(project_dir::String; julia_version="1.10", mode="alldeps", work_dir=mktempdir())
 
-Test if minimum versions can be resolved.
+Test if minimum versions can be resolved using Resolver.jl.
 Returns (success::Bool, error_output::String)
 """
-function test_min_versions(project_dir::String; julia_version="1.10", mode="alldeps")
-    success, _, error_msg = downgrade_to_minimum_versions(project_dir; julia_version, mode)
+function test_min_versions(project_dir::String; julia_version="1.10", mode="alldeps", work_dir=mktempdir())
+    success, output = downgrade_to_minimum_versions(project_dir; julia_version, mode, work_dir)
     
     if success
-        # Try to instantiate with the minimum versions
-        manifest_file = joinpath(project_dir, "Manifest_minimum.toml")
-        if isfile(manifest_file)
-            try
-                # Test instantiation in a temporary environment
-                temp_test = mktempdir()
-                cp(joinpath(project_dir, "Project.toml"), joinpath(temp_test, "Project.toml"))
-                cp(manifest_file, joinpath(temp_test, "Manifest.toml"))
-                
-                Pkg.activate(temp_test)
-                Pkg.instantiate()
-                Pkg.activate()
-                
-                return true, "Successfully resolved minimum versions"
-            catch e
-                return false, sprint(showerror, e)
-            finally
-                rm(manifest_file, force=true)
-            end
-        end
+        return true, "Successfully resolved minimum versions"
+    else
+        return false, output
     end
-    
-    return false, error_msg
 end
 
 """
@@ -356,7 +294,7 @@ function fix_package_min_versions(repo_path::String;
         @info "Iteration $iteration/$max_iterations"
         
         # Test minimum versions
-        success, output = test_min_versions(repo_path; julia_version)
+        success, output = test_min_versions(repo_path; julia_version, work_dir)
         
         if success
             @info "✓ Minimum versions resolved successfully!"
