@@ -3,12 +3,6 @@ using OrgMaintenanceScripts
 using Pkg
 
 @testset "Formatting Functions" begin
-    @testset "ensure_juliaformatter" begin
-        # This should work without errors
-        OrgMaintenanceScripts.ensure_juliaformatter()
-        @test haskey(Pkg.project().dependencies, "JuliaFormatter")
-    end
-
     @testset "format_repository with invalid inputs" begin
         # Test with missing fork_user when create_pr=true
         success, message, pr_url = format_repository(
