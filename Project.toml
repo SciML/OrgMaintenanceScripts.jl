@@ -1,7 +1,7 @@
 name = "OrgMaintenanceScripts"
 uuid = "87d49508-7ad8-40c6-ae47-b3ac92269cd4"
 authors = ["SciML Contributors"]
-version = "0.1.0"
+version = "1.0.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
