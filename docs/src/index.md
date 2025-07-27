@@ -15,6 +15,8 @@ This package provides maintenance scripts for SciML organization repositories, i
 - **Version Bumping**: Automatically bump minor versions in Project.toml files
 - **Package Registration**: Register packages to Julia registries
 - **Minimum Version Fixing**: Fix minimum version compatibility bounds to pass downgrade CI tests
+- **Compat Bumping**: Automatically update package compatibility bounds for dependencies
+- **Version Check Finding**: Find outdated VERSION checks that can be removed
 - **Organization-wide Operations**: Process entire organizations at once
 
 ## Usage Examples
@@ -74,10 +76,50 @@ results = fix_org_min_versions("SciML")
 results = fix_org_min_versions("SciML"; only_repos=["OrdinaryDiffEq.jl", "DiffEqBase.jl"])
 ```
 
+### Compat Bumping
+
+```julia
+using OrgMaintenanceScripts
+
+# Check available compat updates for a repository
+updates = get_available_compat_updates("/path/to/MyPackage.jl")
+for (pkg, info) in updates
+    println("$pkg: $(info.current) → $(info.latest)")
+end
+
+# Bump compat bounds and test
+success = bump_compat_and_test("/path/to/MyPackage.jl"; 
+    create_pr = true,
+    fork_user = "myusername"
+)
+
+# Process an entire organization
+results = bump_compat_org_repositories("SciML";
+    fork_user = "myusername",
+    limit = 10
+)
+```
+
+### Version Check Finding
+
+```julia
+using OrgMaintenanceScripts
+
+# Find old version checks in a repository
+checks = find_version_checks_in_repo("/path/to/MyPackage.jl")
+
+# Find old version checks across an organization
+results = find_version_checks_in_org("SciML"; min_version=v"1.10")
+print_version_check_summary(results)
+
+# Use custom minimum version
+results = find_version_checks_in_org("MyOrg"; min_version=v"1.9", max_repos=10)
+```
+
 ## Contents
 
 ```@contents
-Pages = ["formatting.md", "version_bumping.md", "min_version_fixing.md"]
+Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md"]
 Depth = 2
 ```
 
