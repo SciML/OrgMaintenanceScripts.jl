@@ -270,32 +270,52 @@ function fix_unused_import(file_path::String, symbol::String)
     
     content = read(file_path, String)
     
-    # Remove the symbol from import statements
-    # Handle various import patterns
-    patterns = [
-        # using Module: symbol, other_symbol
-        r"using\s+(\w+):\s*([^,\n]*,\s*)*" * symbol * r"\s*(,\s*[^,\n]+)*" => s -> begin
-            # Remove the symbol and clean up commas
-            cleaned = replace(s, Regex("\\b$symbol\\b\\s*,?\\s*") => "")
-            # Remove trailing comma if any
-            cleaned = replace(cleaned, r",\s*$" => "")
-            # Remove empty imports
-            if occursin(r"using\s+\w+:\s*$", cleaned)
-                ""
-            else
-                cleaned
-            end
-        end,
-        # import Module.symbol
-        Regex("import\\s+\\w+\\.$symbol\\s*\$", "m") => "",
-        # import Module: symbol
-        Regex("import\\s+\\w+:\\s*$symbol\\s*\$", "m") => "",
-    ]
+    # Escape special characters in symbol for regex
+    escaped_symbol = replace(symbol, r"([.*+?^${}()|[\]\\!])" => s"\\\1")
     
-    modified = content
-    for (pattern, replacement) in patterns
-        modified = replace(modified, pattern => replacement)
+    # Process line by line for more precise control
+    lines = split(content, '\n')
+    modified_lines = String[]
+    
+    for line in lines
+        if occursin(r"^\s*(using|import)\s+", line) && occursin(symbol, line)
+            # This line contains an import/using statement with our symbol
+            
+            # Handle "using Module: symbol1, symbol2, symbol3" format
+            m = match(r"^(\s*)(using|import)\s+(\w+)\s*:\s*(.*)", line)
+            if m !== nothing
+                indent = m.captures[1]
+                keyword = m.captures[2]
+                module_name = m.captures[3]
+                imports = m.captures[4]
+                
+                # Split imports and filter out the target symbol
+                import_list = [strip(imp) for imp in split(imports, ',')]
+                # Filter out the exact symbol match
+                filtered = filter(imp -> strip(imp) != symbol, import_list)
+                
+                if isempty(filtered)
+                    # Skip this line entirely if no imports remain
+                    continue
+                else
+                    # Reconstruct the line
+                    push!(modified_lines, "$(indent)$(keyword) $(module_name): " * join(filtered, ", "))
+                end
+            # Handle "import Module.symbol" format
+            elseif occursin(Regex("^\\s*import\\s+\\w+\\.$(escaped_symbol)\\s*\$"), line)
+                # Skip this line entirely
+                continue
+            else
+                # Keep the line as is if we couldn't parse it
+                push!(modified_lines, line)
+            end
+        else
+            # Not an import line or doesn't contain our symbol
+            push!(modified_lines, line)
+        end
     end
+    
+    modified = join(modified_lines, '\n')
     
     # Clean up empty lines
     modified = replace(modified, r"\n\n\n+" => "\n\n")
