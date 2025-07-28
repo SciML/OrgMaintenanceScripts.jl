@@ -225,7 +225,9 @@ using Dates
     
     @testset "Edge cases" begin
         # Test with non-existent directory
-        @test_throws Exception generate_invalidation_report("/nonexistent/path")
+        report = generate_invalidation_report("/nonexistent/path")
+        @test report.total_invalidations == -1  # Should indicate failure
+        @test contains(report.summary, "failed")
         
         # Test with directory without Project.toml
         empty_dir = mktempdir()

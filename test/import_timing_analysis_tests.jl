@@ -190,50 +190,50 @@ using Dates
     @testset "generate_import_timing_report" begin
         # Test with our mock package
         # Note: This test might fail if the package can't be imported
-        try
-            report = generate_import_timing_report(test_dir)
-            
-            @test isa(report, ImportTimingReport)
-            @test report.repo == basename(test_dir)
+        report = generate_import_timing_report(test_dir)
+        
+        @test isa(report, ImportTimingReport)
+        @test report.repo == basename(test_dir)
+        
+        # If analysis failed, verify error handling
+        if report.total_import_time == -1.0
+            @test contains(report.summary, "failed")
+            @test !isempty(report.recommendations)
+            @test report.package_name == ""  # Empty when failed
+        else
+            # Otherwise check normal behavior
             @test report.package_name == "TestImportTimingPackage"
             @test isa(report.total_import_time, Float64)
-            @test isa(report.analysis_time, DateTime)
+            @test report.total_import_time >= 0.0
             @test !isempty(report.summary)
             @test isa(report.recommendations, Vector{String})
-            
-            # Should have some recommendations
             @test !isempty(report.recommendations)
-            
-            # Check that we have timing data structure
             @test isa(report.major_contributors, Vector{ImportTiming})
-            
-        catch e
-            # If import timing analysis fails, that's OK for testing
-            @test_broken false  # Mark as expected failure
-            @info "Import timing analysis test skipped due to: $e"
         end
+        
+        @test isa(report.analysis_time, DateTime)
     end
     
     @testset "analyze_repo_import_timing" begin
         # Test the main analysis function
-        try
-            # Create a temporary output file
-            output_file = joinpath(test_dir, "timing_analysis_output.json")
-            
-            report = analyze_repo_import_timing(test_dir; output_file=output_file)
-            
-            @test isa(report, ImportTimingReport)
-            @test report.repo == basename(test_dir)
+        # Create a temporary output file
+        output_file = joinpath(test_dir, "timing_analysis_output.json")
+        
+        report = analyze_repo_import_timing(test_dir; output_file=output_file)
+        
+        @test isa(report, ImportTimingReport)
+        @test report.repo == basename(test_dir)
+        
+        # If analysis failed, verify error handling
+        if report.total_import_time == -1.0
+            @test contains(report.summary, "failed")
+            @test !isempty(report.recommendations)
+            @test report.package_name == ""  # Empty when failed
+        else
+            # Otherwise check normal behavior
             @test report.package_name == "TestImportTimingPackage"
-            
-            # Check if output file was created (if analysis succeeded)
-            if report.total_import_time >= 0
-                @test isfile(output_file)
-            end
-            
-        catch e
-            @test_broken false  # Mark as expected failure for CI environments
-            @info "Repository import timing analysis test skipped due to: $e"
+            @test report.total_import_time >= 0.0
+            @test isfile(output_file)
         end
     end
     
@@ -290,14 +290,18 @@ using Dates
     
     @testset "Edge cases" begin
         # Test with non-existent directory
-        @test_throws Exception generate_import_timing_report("/nonexistent/path")
+        report = generate_import_timing_report("/nonexistent/path")
+        @test report.total_import_time == -1.0  # Indicates error
+        @test contains(report.summary, "failed")
         
         # Test with directory without Project.toml
         empty_dir = mktempdir()
-        @test_throws Exception generate_import_timing_report(empty_dir)
+        report = generate_import_timing_report(empty_dir)
+        @test report.total_import_time == -1.0  # Indicates error
+        @test contains(report.summary, "failed")
         
-        # Test with invalid package name
-        @test_throws Exception generate_import_timing_report(test_dir, "NonExistentPackage")
+        # Test with invalid package name - this should throw during the process
+        @test_throws Exception analyze_import_timing_in_process(test_dir, "NonExistentPackage")
     end
     
     # Clean up

@@ -4,6 +4,8 @@ using Distributed
 using HTTP
 using JSON3
 using TOML
+using Random
+using Statistics
 
 struct ImportTiming
     package_name::String
@@ -53,56 +55,21 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
         end
     end
     
-    # Create a temporary script to run the timing analysis
-    analysis_script = joinpath(tempdir(), "import_timing_analysis_$(randstring(8)).jl")
+    # Create a simple command to run @time_imports
+    @info "Running import timing analysis in separate process..."
     
-    write(analysis_script, """
-        using Pkg
-        using TOML
-        
-        # Change to repository directory
-        cd("$repo_path")
-        
-        println("Starting import timing analysis for: $package_name")
-        
-        # Activate the project
-        Pkg.activate(".")
-        
-        # Ensure dependencies are instantiated
-        Pkg.instantiate()
-        
-        # Capture @time_imports output
-        import_output = IOBuffer()
-        
-        # Redirect stdout to capture @time_imports output
-        old_stdout = stdout
-        redirect_stdout(import_output)
-        
-        try
-            # Use @time_imports to measure import timing
-            @time_imports using $(Symbol(package_name))
-        catch e
-            # Restore stdout
-            redirect_stdout(old_stdout)
-            println("Failed to import $package_name: \$e")
-            rethrow(e)
-        finally
-            # Always restore stdout
-            redirect_stdout(old_stdout)
-        end
-        
-        # Get the captured output
-        timing_output = String(take!(import_output))
-        
-        println("Import timing analysis completed")
-        println("Raw output:")
-        println(timing_output)
+    # Use a simpler approach: run julia directly with --time-imports flag
+    cmd = `julia --project=$repo_path --startup-file=no --time-imports -e "using Pkg; Pkg.activate(\".\"); Pkg.instantiate(); using $package_name"`
+    
+    # Run and capture output
+    try
+        output = read(cmd, String)
         
         # Parse the timing output to extract structured data
         timing_data = []
         
         # Split into lines and parse each timing entry
-        lines = split(timing_output, '\\n')
+        lines = split(output, '\n')
         
         for line in lines
             line = strip(line)
@@ -112,7 +79,7 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
             
             # Parse timing line format: "  123.4 ms  PackageName"
             # or "  123.4 ms  ✓ PackageName"
-            timing_match = match(r"^\\s*(\\d+\\.\\d+)\\s*ms\\s*([✓]?)\\s*(.+)\$", line)
+            timing_match = match(r"^\s*(\d+\.?\d*)\s*ms\s*([✓]?)\s*(.+)$", line)
             if timing_match !== nothing
                 time_ms = parse(Float64, timing_match.captures[1])
                 success_marker = timing_match.captures[2]
@@ -126,61 +93,29 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
                     "time_ms" => time_ms,
                     "time_seconds" => time_ms / 1000.0,
                     "is_precompile" => is_precompile,
-                    "is_local" => (pkg_name == "$package_name"),
+                    "is_local" => (pkg_name == package_name),
                     "line" => line
                 ))
             end
         end
         
-        # Save results to a JSON file for the main process to read
+        # Create results
         results = Dict(
-            "package_name" => "$package_name",
+            "package_name" => package_name,
             "timing_entries" => timing_data,
-            "raw_output" => timing_output,
+            "raw_output" => output,
             "total_entries" => length(timing_data)
         )
-        
-        output_file = joinpath(tempdir(), "import_timing_results_\$(randstring(8)).json")
-        open(output_file, "w") do io
-            JSON3.pretty(io, results)
-        end
-        
-        println("Results saved to: \$output_file")
-        println(output_file)  # Print for the main process to capture
-    """)
-    
-    # Run the analysis in a separate process
-    try
-        @info "Running import timing analysis in separate process..."
-        result = read(`julia --project=$repo_path $analysis_script`, String)
-        
-        # Extract the output file path from the result
-        lines = split(result, '\n')
-        output_file = ""
-        for line in reverse(lines)
-            if endswith(line, ".json")
-                output_file = strip(line)
-                break
-            end
-        end
-        
-        if isempty(output_file) || !isfile(output_file)
-            error("Could not find import timing results file")
-        end
-        
-        # Read and parse the results
-        results = JSON3.read(read(output_file, String))
-        
-        # Clean up temporary files
-        rm(analysis_script; force=true)
-        rm(output_file; force=true)
         
         return results
         
     catch e
-        # Clean up on error
-        rm(analysis_script; force=true)
-        rethrow(e)
+        # If the command failed, rethrow with more context
+        if isa(e, Base.IOError) || isa(e, Base.ProcessFailedException)
+            error("Failed to run import timing analysis: $e")
+        else
+            rethrow(e)
+        end
     end
 end
 
