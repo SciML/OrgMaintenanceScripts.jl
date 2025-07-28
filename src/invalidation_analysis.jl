@@ -139,20 +139,17 @@ function analyze_invalidations_in_process(repo_path::String, test_script::String
             extract_invalidation_info(tree)
         end
         
-        # Save results to a JSON file for the main process to read
+        # Save results as JSON
         results = Dict(
             "total_invalidations" => length(invalidations),
             "tree_count" => length(trees),
             "invalidation_details" => invalidation_data
         )
         
-        output_file = joinpath(tempdir(), "invalidation_results_$(randstring(8)).json")
-        open(output_file, "w") do io
-            JSON3.pretty(io, results)
-        end
-        
-        println("Results saved to: \$output_file")
-        println(output_file)  # Print for the main process to capture
+        # Output JSON directly to stdout for the main process to capture
+        println("===JSON_START===")
+        JSON3.pretty(stdout, results)
+        println("\n===JSON_END===")
     """)
     
     # Run the analysis in a separate process
@@ -160,26 +157,22 @@ function analyze_invalidations_in_process(repo_path::String, test_script::String
         @info "Running invalidation analysis in separate process..."
         result = read(`julia --project=$repo_path $analysis_script`, String)
         
-        # Extract the output file path from the result
-        lines = split(result, '\n')
-        output_file = ""
-        for line in reverse(lines)
-            if endswith(line, ".json")
-                output_file = strip(line)
-                break
-            end
+        # Extract JSON from output
+        json_start = findfirst("===JSON_START===", result)
+        json_end = findfirst("===JSON_END===", result)
+        
+        if isnothing(json_start) || isnothing(json_end)
+            error("Could not find JSON output markers in result")
         end
         
-        if isempty(output_file) || !isfile(output_file)
-            error("Could not find invalidation results file")
-        end
+        # Extract just the JSON portion
+        json_str = result[last(json_start)+1:first(json_end)-1]
         
-        # Read and parse the results
-        results = JSON3.read(read(output_file, String))
+        # Parse JSON directly
+        results = JSON3.read(json_str)
         
         # Clean up temporary files
         rm(analysis_script; force=true)
-        rm(output_file; force=true)
         
         return results
         
