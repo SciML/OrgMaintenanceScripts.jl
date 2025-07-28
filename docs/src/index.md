@@ -17,6 +17,8 @@ This package provides maintenance scripts for SciML organization repositories, i
 - **Minimum Version Fixing**: Fix minimum version compatibility bounds to pass downgrade CI tests
 - **Compat Bumping**: Automatically update package compatibility bounds for dependencies
 - **Version Check Finding**: Find outdated VERSION checks that can be removed
+- **Invalidation Analysis**: Use SnoopCompileCore to detect performance bottlenecks
+- **Import Timing Analysis**: Analyze package loading times with @time_imports
 - **Explicit Imports Fixing**: Automatically fix implicit imports and remove unused imports
 - **Organization-wide Operations**: Process entire organizations at once
 
@@ -135,7 +137,7 @@ results = fix_org_explicit_imports("MyOrg"; create_prs=true)
 ## Contents
 
 ```@contents
-Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md", "explicit_imports_fixing.md"]
+Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md", "invalidation_analysis.md", "import_timing_analysis.md", "explicit_imports_fixing.md"]
 Depth = 2
 ```
 
