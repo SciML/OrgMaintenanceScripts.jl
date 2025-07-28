@@ -124,5 +124,7 @@ using TOML
     include("formatting_tests.jl")
     include("min_version_fixer_tests.jl")
     include("version_check_finder_tests.jl")
+    include("invalidation_analysis_tests.jl")
+    include("import_timing_analysis_tests.jl")
     include("explicit_imports_fixer_tests.jl")
 end
