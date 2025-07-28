@@ -55,21 +55,32 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
         end
     end
     
-    # Create a simple command to run @time_imports
-    @info "Running import timing analysis in separate process..."
+    # Create a temporary script to capture structured timing data
+    analysis_script = joinpath(tempdir(), "import_timing_$(randstring(8)).jl")
     
-    # Use a simpler approach: run julia directly with --time-imports flag
-    cmd = `julia --project=$repo_path --startup-file=no --time-imports -e "using Pkg; Pkg.activate(\".\"); Pkg.instantiate(); using $package_name"`
-    
-    # Run and capture output
-    try
-        output = read(cmd, String)
+    write(analysis_script, """
+        using Pkg
+        using JSON3
         
-        # Parse the timing output to extract structured data
+        # Activate and instantiate the project
+        Pkg.activate(".")
+        Pkg.instantiate()
+        
+        # Capture timing data in a structured way
         timing_data = []
+        raw_output = IOBuffer()
         
-        # Split into lines and parse each timing entry
-        lines = split(output, '\n')
+        # Redirect stdout to capture the timing output
+        original_stdout = stdout
+        redirect_stdout(raw_output) do
+            # Run with time imports flag
+            Base.eval(Main, :(using InteractiveUtils))
+            Base.eval(Main, :(@time_imports using \$(Symbol("$package_name"))))
+        end
+        
+        # Process the captured output
+        raw_str = String(take!(raw_output))
+        lines = split(raw_str, '\n')
         
         for line in lines
             line = strip(line)
@@ -77,39 +88,67 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
                 continue
             end
             
-            # Parse timing line format: "  123.4 ms  PackageName"
-            # or "  123.4 ms  ✓ PackageName"
-            timing_match = match(r"^\s*(\d+\.?\d*)\s*ms\s*([✓]?)\s*(.+)$", line)
+            # Parse timing line format
+            timing_match = match(r"^\\s*(\\d+\\.?\\d*)\\s*ms\\s*([✓]?)\\s*(.+)\$", line)
             if timing_match !== nothing
                 time_ms = parse(Float64, timing_match.captures[1])
                 success_marker = timing_match.captures[2]
                 pkg_name = strip(timing_match.captures[3])
                 
-                # Determine if this is precompilation or loading
-                is_precompile = isempty(success_marker)  # No checkmark means precompilation
-                
                 push!(timing_data, Dict(
                     "package" => pkg_name,
                     "time_ms" => time_ms,
                     "time_seconds" => time_ms / 1000.0,
-                    "is_precompile" => is_precompile,
-                    "is_local" => (pkg_name == package_name),
+                    "is_precompile" => isempty(success_marker),
+                    "is_local" => (pkg_name == "$package_name"),
                     "line" => line
                 ))
             end
         end
         
-        # Create results
+        # Output JSON directly
         results = Dict(
-            "package_name" => package_name,
+            "package_name" => "$package_name",
             "timing_entries" => timing_data,
-            "raw_output" => output,
+            "raw_output" => raw_str,
             "total_entries" => length(timing_data)
         )
+        
+        println("===JSON_START===")
+        JSON3.pretty(stdout, results)
+        println("\n===JSON_END===")
+    """)
+    
+    # Run the analysis script
+    @info "Running import timing analysis in separate process..."
+    try
+        result = read(`julia --project=$repo_path $analysis_script`, String)
+        
+        # Extract JSON from output
+        json_start = findfirst("===JSON_START===", result)
+        json_end = findfirst("===JSON_END===", result)
+        
+        if isnothing(json_start) || isnothing(json_end)
+            # Fallback to parsing the output directly if JSON markers not found
+            @warn "Could not find JSON markers, falling back to direct output parsing"
+            return analyze_import_timing_fallback(result, package_name)
+        end
+        
+        # Extract just the JSON portion
+        json_str = result[last(json_start)+1:first(json_end)-1]
+        
+        # Parse JSON directly
+        results = JSON3.read(json_str)
+        
+        # Clean up temporary files
+        rm(analysis_script; force=true)
         
         return results
         
     catch e
+        # Clean up on error
+        rm(analysis_script; force=true)
+        
         # If the command failed, rethrow with more context
         if isa(e, Base.IOError) || isa(e, Base.ProcessFailedException)
             error("Failed to run import timing analysis: $e")
@@ -117,6 +156,42 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
             rethrow(e)
         end
     end
+end
+
+# Fallback function for direct output parsing
+function analyze_import_timing_fallback(output::String, package_name::String)
+    timing_data = []
+    lines = split(output, '\n')
+    
+    for line in lines
+        line = strip(line)
+        if isempty(line) || !contains(line, "ms")
+            continue
+        end
+        
+        timing_match = match(r"^\s*(\d+\.?\d*)\s*ms\s*([✓]?)\s*(.+)$", line)
+        if timing_match !== nothing
+            time_ms = parse(Float64, timing_match.captures[1])
+            success_marker = timing_match.captures[2]
+            pkg_name = strip(timing_match.captures[3])
+            
+            push!(timing_data, Dict(
+                "package" => pkg_name,
+                "time_ms" => time_ms,
+                "time_seconds" => time_ms / 1000.0,
+                "is_precompile" => isempty(success_marker),
+                "is_local" => (pkg_name == package_name),
+                "line" => line
+            ))
+        end
+    end
+    
+    return Dict(
+        "package_name" => package_name,
+        "timing_entries" => timing_data,
+        "raw_output" => output,
+        "total_entries" => length(timing_data)
+    )
 end
 
 """
