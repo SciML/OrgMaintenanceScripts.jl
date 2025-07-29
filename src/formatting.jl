@@ -4,7 +4,6 @@ using Pkg
 using Dates
 using JuliaFormatter
 
-
 """
     format_repository(repo_url::String; 
                      test::Bool = true,
@@ -16,38 +15,44 @@ using JuliaFormatter
 Format a single repository with JuliaFormatter.
 
 # Arguments
-- `repo_url`: URL of the repository to format (e.g., "https://github.com/SciML/Example.jl.git")
-- `test`: Whether to run tests after formatting (default: true)
-- `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
-- `create_pr`: Whether to create a PR instead of pushing to master (default: true)
-- `fork_user`: GitHub username for creating PRs (required if create_pr=true)
-- `working_dir`: Directory to clone the repository into (default: temporary directory)
+
+  - `repo_url`: URL of the repository to format (e.g., "https://github.com/SciML/Example.jl.git")
+  - `test`: Whether to run tests after formatting (default: true)
+  - `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
+  - `create_pr`: Whether to create a PR instead of pushing to master (default: true)
+  - `fork_user`: GitHub username for creating PRs (required if create_pr=true)
+  - `working_dir`: Directory to clone the repository into (default: temporary directory)
 
 # Returns
-- `(success::Bool, message::String, pr_url::Union{String,Nothing})`
+
+  - `(success::Bool, message::String, pr_url::Union{String,Nothing})`
 """
 function format_repository(
-    repo_url::String;
-    test::Bool = true,
-    push_to_master::Bool = false,
-    create_pr::Bool = true,
-    fork_user::String = "",
-    working_dir::String = mktempdir(),
+        repo_url::String;
+        test::Bool = true,
+        push_to_master::Bool = false,
+        create_pr::Bool = true,
+        fork_user::String = "",
+        working_dir::String = mktempdir()
 )
 
     # Validate inputs
     if create_pr && isempty(fork_user)
-        return (false, "fork_user must be provided when create_pr=true", nothing)
+        error_msg = "fork_user must be provided when create_pr=true"
+        @error error_msg repo=repo_url
+        return (false, error_msg, nothing)
     end
 
     if push_to_master && create_pr
-        return (false, "Cannot both push_to_master and create_pr", nothing)
+        error_msg = "Cannot both push_to_master and create_pr"
+        @error error_msg repo=repo_url
+        return (false, error_msg, nothing)
     end
 
     # Extract repo name from URL
     repo_name = basename(repo_url)
     if endswith(repo_name, ".git")
-        repo_name = repo_name[1:(end-4)]
+        repo_name = repo_name[1:(end - 4)]
     end
 
     repo_path = joinpath(working_dir, repo_name)
@@ -59,8 +64,8 @@ function format_repository(
 
         cd(repo_path) do
             # Get default branch
-            default_branch =
-                strip(read(`git symbolic-ref refs/remotes/origin/HEAD`, String))
+            default_branch = strip(read(
+                `git symbolic-ref refs/remotes/origin/HEAD`, String))
             default_branch = split(default_branch, "/")[end]
 
             # Create branch if not pushing to master
@@ -70,6 +75,7 @@ function format_repository(
             end
 
             # Check for formatter config
+            formatter_config_created = false
             if !isfile(".JuliaFormatter.toml")
                 @info "Creating .JuliaFormatter.toml with SciML style..."
                 open(".JuliaFormatter.toml", "w") do f
@@ -77,7 +83,7 @@ function format_repository(
                     println(f, "format_markdown = true")
                     println(f, "format_docstrings = true")
                 end
-                run(`git add .JuliaFormatter.toml`)
+                formatter_config_created = true
             end
 
             # Run formatter
@@ -90,11 +96,21 @@ function format_repository(
                 false
             end
 
-            # Check for changes
+            # Check for changes (excluding just the formatter config)
             changes = read(`git status --porcelain`, String)
-            if isempty(changes)
+            changed_files = filter(!isempty, split(changes, '\n'))
+
+            # If only change is the formatter config, no formatting was needed
+            if isempty(changed_files) ||
+               (length(changed_files) == 1 && formatter_config_created &&
+                occursin(".JuliaFormatter.toml", changed_files[1]))
                 @info "No formatting changes needed"
                 return (true, "No formatting changes needed", nothing)
+            end
+
+            # Add formatter config if it was created
+            if formatter_config_created
+                run(`git add .JuliaFormatter.toml`)
             end
 
             # Stage changes
@@ -145,14 +161,14 @@ function format_repository(
                 return (
                     true,
                     "Successfully pushed formatting changes to $default_branch",
-                    nothing,
+                    nothing
                 )
             elseif create_pr
                 @info "Creating pull request..."
 
                 # Add fork remote
-                fork_url =
-                    replace(repo_url, r"github\.com/[^/]+" => "github.com/$fork_user")
+                fork_url = replace(
+                    repo_url, r"github\.com/[^/]+" => "github.com/$fork_user")
                 run(`git remote add fork $fork_url`)
 
                 # Push to fork
@@ -186,7 +202,7 @@ function format_repository(
 
                 pr_output = read(
                     `gh pr create --repo $org/$repo --head $fork_user:fix-formatting --title "Apply JuliaFormatter to fix code formatting" --body-file pr_body.txt`,
-                    String,
+                    String
                 )
                 rm("pr_body.txt")
 
@@ -210,7 +226,8 @@ end
 Run tests for a Julia package.
 
 # Returns
-- `true` if tests pass, `false` otherwise
+
+  - `true` if tests pass, `false` otherwise
 """
 function run_tests(repo_path::String; timeout_minutes::Int = 10)
     try
@@ -219,8 +236,8 @@ function run_tests(repo_path::String; timeout_minutes::Int = 10)
 
         # Run tests with timeout
         test_cmd = `julia --project=. -e "using Pkg; Pkg.test()"`
-        test_process =
-            run(pipeline(test_cmd; stdout = stdout, stderr = stderr); wait = false)
+        test_process = run(
+            pipeline(test_cmd; stdout = stdout, stderr = stderr); wait = false)
 
         # Wait for tests with timeout
         test_start = time()
@@ -261,28 +278,43 @@ end
 Format all repositories in a GitHub organization.
 
 # Arguments
-- `org`: GitHub organization name (default: "SciML")
-- `test`: Whether to run tests after formatting (default: true)
-- `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
-- `create_pr`: Whether to create PRs instead of pushing to master (default: true)
-- `fork_user`: GitHub username for creating PRs (required if create_pr=true)
-- `limit`: Maximum number of repositories to process (default: 100)
-- `only_failing_ci`: Only process repos with failing formatter CI (default: true)
-- `log_file`: Path to save results log (default: auto-generated)
+
+  - `org`: GitHub organization name (default: "SciML")
+  - `test`: Whether to run tests after formatting (default: true)
+  - `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
+  - `create_pr`: Whether to create PRs instead of pushing to master (default: true)
+  - `fork_user`: GitHub username for creating PRs (required if create_pr=true)
+  - `limit`: Maximum number of repositories to process (default: 100)
+  - `only_failing_ci`: Only process repos with failing formatter CI (default: true)
+  - `log_file`: Path to save results log (default: auto-generated)
 
 # Returns
-- `(successes::Vector{String}, failures::Vector{String}, pr_urls::Vector{String})`
+
+  - `(successes::Vector{String}, failures::Vector{String}, pr_urls::Vector{String})`
 """
 function format_org_repositories(
-    org::String = "SciML";
-    test::Bool = true,
-    push_to_master::Bool = false,
-    create_pr::Bool = true,
-    fork_user::String = "",
-    limit::Int = 100,
-    only_failing_ci::Bool = true,
-    log_file::String = "",
+        org::String = "SciML";
+        test::Bool = true,
+        push_to_master::Bool = false,
+        create_pr::Bool = true,
+        fork_user::String = "",
+        limit::Int = 100,
+        only_failing_ci::Bool = true,
+        log_file::String = ""
 )
+
+    # Validate inputs early
+    if create_pr && isempty(fork_user)
+        error_msg = "fork_user must be provided when create_pr=true"
+        @error error_msg
+        return (String[], String[], String[])
+    end
+
+    if push_to_master && create_pr
+        error_msg = "Cannot both push_to_master and create_pr"
+        @error error_msg
+        return (String[], String[], String[])
+    end
 
     # Set up logging
     if isempty(log_file)
@@ -290,7 +322,7 @@ function format_org_repositories(
         mkpath(log_dir)
         log_file = joinpath(
             log_dir,
-            "formatting_$(org)_$(Dates.format(now(), "yyyy-mm-dd_HHMMSS")).log",
+            "formatting_$(org)_$(Dates.format(now(), "yyyy-mm-dd_HHMMSS")).log"
         )
     end
 
@@ -334,20 +366,23 @@ function format_org_repositories(
                 push_to_master = push_to_master,
                 create_pr = create_pr,
                 fork_user = fork_user,
-                working_dir = working_dir,
+                working_dir = working_dir
             )
 
             if success
                 push!(successes, repo)
                 if pr_url !== nothing
                     push!(pr_urls, pr_url)
+                    @info "✓ SUCCESS: $repo - $message" pr=pr_url
                     println(log_io, "✓ SUCCESS: $message")
                     println(log_io, "  PR: $pr_url")
                 else
+                    @info "✓ SUCCESS: $repo - $message"
                     println(log_io, "✓ SUCCESS: $message")
                 end
             else
                 push!(failures, repo)
+                @error "✗ FAILED: $repo - $message"
                 println(log_io, "✗ FAILED: $message")
             end
 
@@ -390,8 +425,7 @@ Get all Julia repositories from a GitHub organization.
 """
 function get_org_repositories(org::String, limit::Int = 100)
     try
-        cmd =
-            `gh repo list $org --limit $limit --json name,isArchived --jq '.[] | select(.isArchived == false and (.name | endswith(".jl"))) | .name'`
+        cmd = `gh repo list $org --limit $limit --json name,isArchived --jq '.[] | select(.isArchived == false and (.name | endswith(".jl"))) | .name'`
         output = read(cmd, String)
         repos = filter(!isempty, split(strip(output), '\n'))
         return String.(repos)  # Convert to Vector{String}
@@ -414,8 +448,7 @@ function has_failing_formatter_ci(org::String, repo::String)
         for branch in branches
             try
                 # First get all runs for the workflow
-                cmd =
-                    `gh run list --repo $org/$repo --workflow $workflow --limit 10 --json status,conclusion,headBranch`
+                cmd = `gh run list --repo $org/$repo --workflow $workflow --limit 10 --json status,conclusion,headBranch`
                 output = read(cmd, String)
 
                 if !isempty(output)
