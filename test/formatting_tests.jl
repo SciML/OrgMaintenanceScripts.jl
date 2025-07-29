@@ -6,7 +6,8 @@ using Pkg
     @testset "format_repository with invalid inputs" begin
         # Test with missing fork_user when create_pr=true
         # Now it tries to auto-detect from gh CLI
-        success, message, pr_url = format_repository(
+        success, message,
+        pr_url = format_repository(
             "https://github.com/test/test.jl.git";
             create_pr = true,
             fork_user = ""
@@ -23,7 +24,8 @@ using Pkg
               occursin("Error:", message)
 
         # Test with both push_to_master and create_pr
-        success, message, pr_url = format_repository(
+        success, message,
+        pr_url = format_repository(
             "https://github.com/test/test.jl.git";
             push_to_master = true,
             create_pr = true,

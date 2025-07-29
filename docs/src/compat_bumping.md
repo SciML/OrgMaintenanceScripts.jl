@@ -33,7 +33,9 @@ Returns a vector of `CompatUpdate` structs, each containing:
 Bump compat entries for major version updates and run tests locally.
 
 ```julia
-success, message, pr_url, bumped_packages = bump_compat_and_test("path/to/repo";
+success, message,
+pr_url,
+bumped_packages = bump_compat_and_test("path/to/repo";
     package_name = "SpecificPackage",  # Optional: bump only this package
     bump_all = false,                  # Bump all available updates
     create_pr = true,                  # Create PR if tests pass
@@ -61,7 +63,8 @@ success, message, pr_url, bumped_packages = bump_compat_and_test("path/to/repo";
 Process all repositories in a GitHub organization.
 
 ```julia
-successes, failures, pr_urls = bump_compat_org_repositories("SciML";
+successes, failures,
+pr_urls = bump_compat_org_repositories("SciML";
     package_name = nothing,      # Bump all packages
     bump_all = false,           # One update per repo
     create_pr = true,
@@ -89,7 +92,9 @@ end
 
 ```julia
 # Bump compat for DataFrames only
-success, msg, pr_url, bumped = bump_compat_and_test(".";
+success, msg,
+pr_url,
+bumped = bump_compat_and_test(".";
     package_name = "DataFrames",
     create_pr = true,
     fork_user = "myusername"
@@ -100,7 +105,9 @@ success, msg, pr_url, bumped = bump_compat_and_test(".";
 
 ```julia
 # Bump all available major version updates
-success, msg, pr_url, bumped = bump_compat_and_test(".";
+success, msg,
+pr_url,
+bumped = bump_compat_and_test(".";
     bump_all = true,
     create_pr = true,
     fork_user = "myusername"
@@ -111,7 +118,8 @@ success, msg, pr_url, bumped = bump_compat_and_test(".";
 
 ```julia
 # Process all SciML repositories
-successes, failures, pr_urls = bump_compat_org_repositories("SciML";
+successes, failures,
+pr_urls = bump_compat_org_repositories("SciML";
     bump_all = false,  # One update per repo
     create_pr = true,
     fork_user = "myusername",

@@ -99,7 +99,8 @@ function test_min_versions(project_dir::String; julia_version = "1.10",
         mode = "alldeps", work_dir = mktempdir())
     @info "Testing minimum versions for $project_dir with Julia $julia_version and mode $mode"
 
-    success, output = downgrade_to_minimum_versions(
+    success,
+    output = downgrade_to_minimum_versions(
         project_dir; julia_version, mode, work_dir)
 
     if success
@@ -443,7 +444,8 @@ function fix_package_min_versions_all(repo_path::String;
         @info "Fixing minimum versions for $rel_path"
 
         # Fix minimum versions for this project
-        success, updates = fix_package_min_versions(project_dir;
+        success,
+        updates = fix_package_min_versions(project_dir;
             max_iterations,
             work_dir,
             julia_version)
@@ -594,7 +596,8 @@ function fix_repo_min_versions(repo_name::String;
 
     if use_multi
         # Fix minimum versions for all projects
-        success, all_updates = fix_package_min_versions_all(repo_dir;
+        success,
+        all_updates = fix_package_min_versions_all(repo_dir;
             max_iterations,
             work_dir,
             julia_version,
@@ -634,7 +637,8 @@ function fix_repo_min_versions(repo_name::String;
         end
     else
         # Fix minimum versions for single project
-        success, updates = fix_package_min_versions(repo_dir;
+        success,
+        updates = fix_package_min_versions(repo_dir;
             max_iterations,
             work_dir,
             julia_version)

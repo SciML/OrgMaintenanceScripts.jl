@@ -15,13 +15,15 @@ Automatically format Julia code across entire organizations using JuliaFormatter
 using OrgMaintenanceScripts
 
 # Format a single repository
-success, message, pr_url = format_repository(
+success, message,
+pr_url = format_repository(
     "https://github.com/SciML/Example.jl.git";
     fork_user = "myusername"
 )
 
 # Format all repositories with failing formatter CI
-successes, failures, pr_urls = format_org_repositories(
+successes, failures,
+pr_urls = format_org_repositories(
     "SciML";
     fork_user = "myusername",
     only_failing_ci = true
@@ -139,7 +141,9 @@ Automatically bump compat entries for major version updates:
 updates = get_available_compat_updates("/path/to/Project.toml")
 
 # Bump compat and test
-success, msg, pr_url, bumped = bump_compat_and_test(
+success, msg,
+pr_url,
+bumped = bump_compat_and_test(
     repo_path;
     package_name = "DataFrames",  # specific package or nothing for all
     bump_all = false,             # bump all or just one
@@ -148,7 +152,8 @@ success, msg, pr_url, bumped = bump_compat_and_test(
 )
 
 # Process entire organization
-successes, failures, pr_urls = bump_compat_org_repositories(
+successes, failures,
+pr_urls = bump_compat_org_repositories(
     "SciML";
     package_name = "DataFrames",
     fork_user = "myusername"

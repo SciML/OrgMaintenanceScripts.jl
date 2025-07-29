@@ -34,7 +34,8 @@ format_repository(repo_url::String;
 
 ```julia
 # Format a repository and create a PR
-success, message, pr_url = format_repository(
+success, message,
+pr_url = format_repository(
     "https://github.com/SciML/Example.jl.git";
     test = true,
     create_pr = true,
@@ -82,7 +83,8 @@ format_org_repositories(org::String = "SciML";
 
 ```julia
 # Format all SciML repos with failing formatter CI
-successes, failures, pr_urls = format_org_repositories(
+successes, failures,
+pr_urls = format_org_repositories(
     "SciML";
     test = false,  # Skip tests for speed
     create_pr = true,
@@ -105,7 +107,8 @@ Create PRs for repositories with failing formatter CI:
 using OrgMaintenanceScripts
 
 # Format repos with failing CI and create PRs
-successes, failures, pr_urls = format_org_repositories(
+successes, failures,
+pr_urls = format_org_repositories(
     "SciML";
     fork_user = "sciml-bot",
     only_failing_ci = true,
@@ -119,7 +122,8 @@ For trusted automation that pushes directly to master after tests pass:
 
 ```julia
 # Only push if tests pass
-successes, failures, _ = format_org_repositories(
+successes, failures,
+_ = format_org_repositories(
     "SciML";
     push_to_master = true,
     test = true,  # Must pass tests
@@ -132,7 +136,8 @@ successes, failures, _ = format_org_repositories(
 Format a specific repository:
 
 ```julia
-success, message, pr_url = format_repository(
+success, message,
+pr_url = format_repository(
     "https://github.com/SciML/DifferentialEquations.jl.git";
     fork_user = "myusername"
 )

@@ -822,7 +822,9 @@ function bump_compat_org_repositories(org::String = "SciML";
 
                 if use_multi
                     # Use multi-project aware function
-                    success, message, pr_url, bumped_info = bump_compat_and_test_all(
+                    success, message,
+                    pr_url,
+                    bumped_info = bump_compat_and_test_all(
                         repo_path;
                         package_name = package_name,
                         bump_all = bump_all,
@@ -854,7 +856,9 @@ function bump_compat_org_repositories(org::String = "SciML";
                     end
                 else
                     # Use original single-project function
-                    success, message, pr_url, bumped = bump_compat_and_test(
+                    success, message,
+                    pr_url,
+                    bumped = bump_compat_and_test(
                         repo_path;
                         package_name = package_name,
                         bump_all = bump_all,

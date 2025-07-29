@@ -493,7 +493,8 @@ function format_org_repositories(
 
             repo_url = "https://github.com/$org/$repo.git"
 
-            success, message, pr_url = format_repository(
+            success, message,
+            pr_url = format_repository(
                 repo_url;
                 test = test,
                 push_to_master = push_to_master,

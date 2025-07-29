@@ -130,7 +130,8 @@ using Dates
             ]
         )
 
-        major_invalidators, package_impact = OrgMaintenanceScripts.analyze_major_invalidators(mock_data)
+        major_invalidators,
+        package_impact = OrgMaintenanceScripts.analyze_major_invalidators(mock_data)
 
         @test length(major_invalidators) == 3
         @test major_invalidators[1].children_count == 8  # Should be sorted by impact

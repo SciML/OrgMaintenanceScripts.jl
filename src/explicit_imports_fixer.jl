@@ -514,7 +514,8 @@ function fix_repo_explicit_imports(repo_name::String;
     end
 
     # Fix explicit imports
-    success, iterations, final_report = fix_explicit_imports(
+    success, iterations,
+    final_report = fix_explicit_imports(
         repo_dir; max_iterations, verbose)
 
     if !success

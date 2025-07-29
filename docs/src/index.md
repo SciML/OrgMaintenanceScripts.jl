@@ -29,13 +29,15 @@ This package provides maintenance scripts for SciML organization repositories, i
 using OrgMaintenanceScripts
 
 # Format a single repository
-success, message, pr_url = format_repository(
+success, message,
+pr_url = format_repository(
     "https://github.com/SciML/Example.jl.git";
     fork_user = "myusername"
 )
 
 # Format all repos with failing CI
-successes, failures, pr_urls = format_org_repositories(
+successes, failures,
+pr_urls = format_org_repositories(
     "SciML";
     fork_user = "myusername",
     only_failing_ci = true
