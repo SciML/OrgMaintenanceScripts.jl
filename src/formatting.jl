@@ -248,12 +248,12 @@ function format_repository(
                 end
 
                 if !isempty(existing_pr)
+                    @info "Pull request already exists, will update it" pr=existing_pr
                     rm("pr_body.txt"; force = true)
-                    @info "Pull request already exists" pr=existing_pr
-                    return (true, "Pull request already exists", existing_pr)
+                    return (true, "Updated existing pull request", existing_pr)
                 end
 
-                # Create PR
+                # Create new PR
                 try
                     pr_output = read(
                         `gh pr create --repo $org/$repo --head $fork_user:fix-formatting --base $default_branch --title "Apply JuliaFormatter to fix code formatting" --body-file pr_body.txt`,
@@ -266,7 +266,7 @@ function format_repository(
                     rm("pr_body.txt"; force = true)
                     error_output = sprint(showerror, e)
 
-                    # Check if error is because PR already exists
+                    # Check if error is because PR already exists (shouldn't happen but handle it)
                     if occursin("already exists", error_output)
                         # Try to get the existing PR URL
                         existing_pr = try
@@ -279,8 +279,8 @@ function format_repository(
                         end
 
                         if !isempty(existing_pr)
-                            @info "Pull request already exists" pr=existing_pr
-                            return (true, "Pull request already exists", existing_pr)
+                            @info "Pull request already exists (from error), updated it" pr=existing_pr
+                            return (true, "Updated existing pull request", existing_pr)
                         end
                     end
 
