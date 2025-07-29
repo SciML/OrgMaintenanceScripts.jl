@@ -13,18 +13,18 @@ current_repo = dirname(@__DIR__)  # OrgMaintenanceScripts.jl repo
 try
     # Note: This will analyze the OrgMaintenanceScripts package itself
     report = analyze_repo_invalidations(current_repo)
-    
+
     println("Analysis completed for: $(report.repo)")
     println("Total invalidations: $(report.total_invalidations)")
     println("Summary: $(report.summary)")
-    
+
     if !isempty(report.major_invalidators)
         println("\nTop invalidators:")
         for (i, inv) in enumerate(report.major_invalidators[1:min(3, end)])
             println("  $i. $(inv.package) - $(inv.children_count) children")
         end
     end
-    
+
 catch e
     println("Note: Analysis failed - this is expected if SnoopCompileCore is not available")
     println("Error: $e")

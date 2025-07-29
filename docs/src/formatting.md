@@ -9,26 +9,29 @@ The OrgMaintenanceScripts package provides automated formatting functionality to
 Format a single repository with JuliaFormatter.
 
 ```julia
-format_repository(repo_url::String; 
-                 test::Bool = true,
-                 push_to_master::Bool = false,
-                 create_pr::Bool = true,
-                 fork_user::String = "",
-                 working_dir::String = mktempdir())
+format_repository(repo_url::String;
+    test::Bool = true,
+    push_to_master::Bool = false,
+    create_pr::Bool = true,
+    fork_user::String = "",
+    working_dir::String = mktempdir())
 ```
 
 #### Arguments
-- `repo_url`: URL of the repository to format (e.g., "https://github.com/SciML/Example.jl.git")
-- `test`: Whether to run tests after formatting (default: true)
-- `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
-- `create_pr`: Whether to create a PR instead of pushing to master (default: true)
-- `fork_user`: GitHub username for creating PRs (required if create_pr=true)
-- `working_dir`: Directory to clone the repository into (default: temporary directory)
+
+  - `repo_url`: URL of the repository to format (e.g., "https://github.com/SciML/Example.jl.git")
+  - `test`: Whether to run tests after formatting (default: true)
+  - `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
+  - `create_pr`: Whether to create a PR instead of pushing to master (default: true)
+  - `fork_user`: GitHub username for creating PRs (required if create_pr=true)
+  - `working_dir`: Directory to clone the repository into (default: temporary directory)
 
 #### Returns
-- `(success::Bool, message::String, pr_url::Union{String,Nothing})`
+
+  - `(success::Bool, message::String, pr_url::Union{String,Nothing})`
 
 #### Example
+
 ```julia
 # Format a repository and create a PR
 success, message, pr_url = format_repository(
@@ -51,29 +54,32 @@ Format all repositories in a GitHub organization.
 
 ```julia
 format_org_repositories(org::String = "SciML";
-                       test::Bool = true,
-                       push_to_master::Bool = false,
-                       create_pr::Bool = true,
-                       fork_user::String = "",
-                       limit::Int = 100,
-                       only_failing_ci::Bool = true,
-                       log_file::String = "")
+    test::Bool = true,
+    push_to_master::Bool = false,
+    create_pr::Bool = true,
+    fork_user::String = "",
+    limit::Int = 100,
+    only_failing_ci::Bool = true,
+    log_file::String = "")
 ```
 
 #### Arguments
-- `org`: GitHub organization name (default: "SciML")
-- `test`: Whether to run tests after formatting (default: true)
-- `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
-- `create_pr`: Whether to create PRs instead of pushing to master (default: true)
-- `fork_user`: GitHub username for creating PRs (required if create_pr=true)
-- `limit`: Maximum number of repositories to process (default: 100)
-- `only_failing_ci`: Only process repos with failing formatter CI (default: true)
-- `log_file`: Path to save results log (default: auto-generated)
+
+  - `org`: GitHub organization name (default: "SciML")
+  - `test`: Whether to run tests after formatting (default: true)
+  - `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
+  - `create_pr`: Whether to create PRs instead of pushing to master (default: true)
+  - `fork_user`: GitHub username for creating PRs (required if create_pr=true)
+  - `limit`: Maximum number of repositories to process (default: 100)
+  - `only_failing_ci`: Only process repos with failing formatter CI (default: true)
+  - `log_file`: Path to save results log (default: auto-generated)
 
 #### Returns
-- `(successes::Vector{String}, failures::Vector{String}, pr_urls::Vector{String})`
+
+  - `(successes::Vector{String}, failures::Vector{String}, pr_urls::Vector{String})`
 
 #### Example
+
 ```julia
 # Format all SciML repos with failing formatter CI
 successes, failures, pr_urls = format_org_repositories(
@@ -134,15 +140,15 @@ success, message, pr_url = format_repository(
 
 ## Prerequisites
 
-1. **GitHub CLI**: The `gh` command-line tool must be installed and authenticated
-2. **Git**: Git must be configured with appropriate credentials
-3. **Julia**: Julia 1.6 or higher
-4. **Fork Access**: If creating PRs, you need fork access to the repositories
+ 1. **GitHub CLI**: The `gh` command-line tool must be installed and authenticated
+ 2. **Git**: Git must be configured with appropriate credentials
+ 3. **Julia**: Julia 1.6 or higher
+ 4. **Fork Access**: If creating PRs, you need fork access to the repositories
 
 ## Notes
 
-- The formatter uses the SciML style guide by default
-- If a repository doesn't have a `.JuliaFormatter.toml` file, one will be created
-- Tests are run with a 10-minute timeout by default
-- Rate limiting delays are included to avoid GitHub API limits
-- All operations are logged for audit purposes
+  - The formatter uses the SciML style guide by default
+  - If a repository doesn't have a `.JuliaFormatter.toml` file, one will be created
+  - Tests are run with a 10-minute timeout by default
+  - Rate limiting delays are included to avoid GitHub API limits
+  - All operations are logged for audit purposes
