@@ -209,6 +209,21 @@ function format_repository(
                 # Push to fork
                 try
                     run(`git push fork fix-formatting --force`)
+
+                    # Fetch remote refs to verify push
+                    run(`git fetch fork`)
+
+                    # Verify push was successful
+                    remote_sha = try
+                        strip(read(`git rev-parse fork/fix-formatting`, String))
+                    catch
+                        ""
+                    end
+                    local_sha = strip(read(`git rev-parse HEAD`, String))
+
+                    if !isempty(remote_sha) && remote_sha != local_sha
+                        @warn "Push may not have completed successfully" local_sha=local_sha remote_sha=remote_sha
+                    end
                 catch e
                     error_msg = "Failed to push to fork: $(sprint(showerror, e))"
                     @error error_msg
@@ -217,7 +232,13 @@ function format_repository(
 
                 # Wait for push to be processed by GitHub
                 @info "Waiting for GitHub to process the push..."
-                sleep(3)
+                sleep(5)  # Increased from 3 to 5 seconds
+
+                # Check for any uncommitted changes
+                uncommitted = read(`git status --porcelain`, String)
+                if !isempty(uncommitted)
+                    @warn "Uncommitted changes detected" changes=uncommitted
+                end
 
                 # Create PR using gh CLI
                 pr_body = """
@@ -268,10 +289,12 @@ function format_repository(
                             pr_created = true
                             break
                         catch e
+                            error_str = sprint(showerror, e)
                             if attempt < 3 &&
-                               occursin("No commits between", sprint(showerror, e))
-                                @warn "GitHub hasn't processed the push yet, retrying in 3 seconds..." attempt=attempt
-                                sleep(3)
+                               (occursin("No commits between", error_str) ||
+                                occursin("Head sha can't be blank", error_str))
+                                @warn "GitHub hasn't processed the push yet, retrying..." attempt=attempt error=error_str
+                                sleep(5)  # Increased retry delay
                             else
                                 # Re-throw on last attempt or different error
                                 rethrow(e)
