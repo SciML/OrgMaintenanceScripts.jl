@@ -215,8 +215,9 @@ function format_repository(
                     return (false, error_msg, nothing)
                 end
 
-                # Wait for push to be processed
-                sleep(1)
+                # Wait for push to be processed by GitHub
+                @info "Waiting for GitHub to process the push..."
+                sleep(3)
 
                 # Create PR using gh CLI
                 pr_body = """
@@ -253,15 +254,38 @@ function format_repository(
                     return (true, "Updated existing pull request", existing_pr)
                 end
 
-                # Create new PR
+                # Create new PR with retry logic
                 try
-                    pr_output = read(
-                        `gh pr create --repo $org/$repo --head $fork_user:fix-formatting --base $default_branch --title "Apply JuliaFormatter to fix code formatting" --body-file pr_body.txt`,
-                        String
-                    )
-                    rm("pr_body.txt")
-                    pr_url = strip(pr_output)
-                    return (true, "Successfully created pull request", pr_url)
+                    pr_created = false
+                    pr_url = ""
+                    for attempt in 1:3
+                        try
+                            pr_output = read(
+                                `gh pr create --repo $org/$repo --head $fork_user:fix-formatting --base $default_branch --title "Apply JuliaFormatter to fix code formatting" --body-file pr_body.txt`,
+                                String
+                            )
+                            pr_url = strip(pr_output)
+                            pr_created = true
+                            break
+                        catch e
+                            if attempt < 3 &&
+                               occursin("No commits between", sprint(showerror, e))
+                                @warn "GitHub hasn't processed the push yet, retrying in 3 seconds..." attempt=attempt
+                                sleep(3)
+                            else
+                                # Re-throw on last attempt or different error
+                                rethrow(e)
+                            end
+                        end
+                    end
+
+                    if pr_created
+                        rm("pr_body.txt")
+                        return (true, "Successfully created pull request", pr_url)
+                    end
+
+                    # This shouldn't be reached but just in case
+                    error("Failed to create PR after retries")
                 catch e
                     rm("pr_body.txt"; force = true)
                     error_output = sprint(showerror, e)
