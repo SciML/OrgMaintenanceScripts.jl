@@ -119,6 +119,7 @@ results = fix_org_min_versions("SciML"; create_prs = false)
 The tool uses multiple strategies to determine appropriate minimum versions:
 
  1. **Registry Lookup**: Queries the General registry for the latest compatible version
+
  2. **Conservative Bumping**:
     
       + For `0.x` packages: Uses the latest `0.x` version
