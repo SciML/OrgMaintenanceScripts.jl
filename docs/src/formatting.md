@@ -23,7 +23,7 @@ format_repository(repo_url::String;
   - `test`: Whether to run tests after formatting (default: true)
   - `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
   - `create_pr`: Whether to create a PR instead of pushing to master (default: true)
-  - `fork_user`: GitHub username for creating PRs (required if create_pr=true)
+  - `fork_user`: GitHub username for creating PRs (auto-detected from gh CLI if not provided)
   - `working_dir`: Directory to clone the repository into (default: temporary directory)
 
 #### Returns
@@ -69,7 +69,7 @@ format_org_repositories(org::String = "SciML";
   - `test`: Whether to run tests after formatting (default: true)
   - `push_to_master`: Whether to push directly to master/main if tests pass (default: false)
   - `create_pr`: Whether to create PRs instead of pushing to master (default: true)
-  - `fork_user`: GitHub username for creating PRs (required if create_pr=true)
+  - `fork_user`: GitHub username for creating PRs (auto-detected from gh CLI if not provided)
   - `limit`: Maximum number of repositories to process (default: 100)
   - `only_failing_ci`: Only process repos with failing formatter CI (default: true)
   - `log_file`: Path to save results log (default: auto-generated)
@@ -149,6 +149,8 @@ success, message, pr_url = format_repository(
 
   - The formatter uses the SciML style guide by default
   - If a repository doesn't have a `.JuliaFormatter.toml` file, one will be created
+  - Forks are automatically created if they don't exist (requires gh CLI authentication)
+  - The fork_user is auto-detected from gh CLI if not explicitly provided
   - Tests are run with a 10-minute timeout by default
   - Rate limiting delays are included to avoid GitHub API limits
   - All operations are logged for audit purposes
