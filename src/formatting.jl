@@ -75,6 +75,7 @@ function format_repository(
             end
 
             # Check for formatter config
+            formatter_config_created = false
             if !isfile(".JuliaFormatter.toml")
                 @info "Creating .JuliaFormatter.toml with SciML style..."
                 open(".JuliaFormatter.toml", "w") do f
@@ -82,7 +83,7 @@ function format_repository(
                     println(f, "format_markdown = true")
                     println(f, "format_docstrings = true")
                 end
-                run(`git add .JuliaFormatter.toml`)
+                formatter_config_created = true
             end
 
             # Run formatter
@@ -95,11 +96,21 @@ function format_repository(
                 false
             end
 
-            # Check for changes
+            # Check for changes (excluding just the formatter config)
             changes = read(`git status --porcelain`, String)
-            if isempty(changes)
+            changed_files = filter(!isempty, split(changes, '\n'))
+
+            # If only change is the formatter config, no formatting was needed
+            if isempty(changed_files) ||
+               (length(changed_files) == 1 && formatter_config_created &&
+                occursin(".JuliaFormatter.toml", changed_files[1]))
                 @info "No formatting changes needed"
                 return (true, "No formatting changes needed", nothing)
+            end
+
+            # Add formatter config if it was created
+            if formatter_config_created
+                run(`git add .JuliaFormatter.toml`)
             end
 
             # Stage changes
