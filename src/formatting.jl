@@ -237,6 +237,22 @@ function format_repository(
                     print(f, pr_body)
                 end
 
+                # Check if PR already exists
+                existing_pr = try
+                    pr_list = read(
+                        `gh pr list --repo $org/$repo --head $fork_user:fix-formatting --json url --jq '.[0].url'`,
+                        String)
+                    strip(pr_list)
+                catch
+                    ""
+                end
+
+                if !isempty(existing_pr)
+                    rm("pr_body.txt"; force = true)
+                    @info "Pull request already exists" pr=existing_pr
+                    return (true, "Pull request already exists", existing_pr)
+                end
+
                 # Create PR
                 try
                     pr_output = read(
@@ -248,7 +264,27 @@ function format_repository(
                     return (true, "Successfully created pull request", pr_url)
                 catch e
                     rm("pr_body.txt"; force = true)
-                    error_msg = "Failed to create PR: $(sprint(showerror, e))"
+                    error_output = sprint(showerror, e)
+
+                    # Check if error is because PR already exists
+                    if occursin("already exists", error_output)
+                        # Try to get the existing PR URL
+                        existing_pr = try
+                            pr_list = read(
+                                `gh pr list --repo $org/$repo --head $fork_user:fix-formatting --json url --jq '.[0].url'`,
+                                String)
+                            strip(pr_list)
+                        catch
+                            ""
+                        end
+
+                        if !isempty(existing_pr)
+                            @info "Pull request already exists" pr=existing_pr
+                            return (true, "Pull request already exists", existing_pr)
+                        end
+                    end
+
+                    error_msg = "Failed to create PR: $error_output"
                     @error error_msg
                     return (false, error_msg, nothing)
                 end
