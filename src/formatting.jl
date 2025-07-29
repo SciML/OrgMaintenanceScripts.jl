@@ -169,10 +169,31 @@ function format_repository(
                 # Add fork remote
                 fork_url = replace(
                     repo_url, r"github\.com/[^/]+" => "github.com/$fork_user")
+
+                # Check if fork exists
+                fork_check = try
+                    run(`git ls-remote --exit-code $fork_url`)
+                    true
+                catch
+                    false
+                end
+
+                if !fork_check
+                    error_msg = "Fork not found at $fork_url. Please ensure $fork_user has forked the repository."
+                    @error error_msg
+                    return (false, error_msg, nothing)
+                end
+
                 run(`git remote add fork $fork_url`)
 
                 # Push to fork
-                run(`git push fork fix-formatting --force`)
+                try
+                    run(`git push fork fix-formatting --force`)
+                catch e
+                    error_msg = "Failed to push to fork: $(sprint(showerror, e))"
+                    @error error_msg
+                    return (false, error_msg, nothing)
+                end
 
                 # Create PR using gh CLI
                 pr_body = """
