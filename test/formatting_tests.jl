@@ -8,7 +8,7 @@ using Pkg
         success, message, pr_url = format_repository(
             "https://github.com/test/test.jl.git";
             create_pr = true,
-            fork_user = "",
+            fork_user = ""
         )
         @test !success
         @test occursin("fork_user must be provided", message)
@@ -19,7 +19,7 @@ using Pkg
             "https://github.com/test/test.jl.git";
             push_to_master = true,
             create_pr = true,
-            fork_user = "test",
+            fork_user = "test"
         )
         @test !success
         @test occursin("Cannot both push_to_master and create_pr", message)
@@ -43,7 +43,7 @@ using Pkg
         try
             result = OrgMaintenanceScripts.has_failing_formatter_ci(
                 "SciML",
-                "DifferentialEquations.jl",
+                "DifferentialEquations.jl"
             )
             @test isa(result, Bool)
         catch e
