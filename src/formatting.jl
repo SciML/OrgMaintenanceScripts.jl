@@ -38,9 +38,15 @@ function format_repository(
 
     # Validate inputs
     if create_pr && isempty(fork_user)
-        error_msg = "fork_user must be provided when create_pr=true"
-        @error error_msg repo=repo_url
-        return (false, error_msg, nothing)
+        # Try to get current gh user
+        try
+            fork_user = strip(read(`gh api user --jq .login`, String))
+            @info "Using GitHub username from gh CLI: $fork_user"
+        catch
+            error_msg = "fork_user must be provided when create_pr=true (or configure gh CLI)"
+            @error error_msg repo=repo_url
+            return (false, error_msg, nothing)
+        end
     end
 
     if push_to_master && create_pr
@@ -166,24 +172,38 @@ function format_repository(
             elseif create_pr
                 @info "Creating pull request..."
 
-                # Add fork remote
-                fork_url = replace(
-                    repo_url, r"github\.com/[^/]+" => "github.com/$fork_user")
+                # Extract org and repo from URL first (needed for gh commands)
+                m = match(r"github\.com/([^/]+)/([^/]+?)(?:\.git)?$", repo_url)
+                if m === nothing
+                    return (false, "Could not parse repository URL", nothing)
+                end
+                org, repo = m.captures
 
-                # Check if fork exists
-                fork_check = try
-                    run(`git ls-remote --exit-code $fork_url`)
+                # Create or verify fork using gh
+                @info "Ensuring fork exists..."
+                fork_exists = try
+                    # Check if fork already exists
+                    run(`gh repo view $fork_user/$repo --json name`)
                     true
                 catch
                     false
                 end
 
-                if !fork_check
-                    error_msg = "Fork not found at $fork_url. Please ensure $fork_user has forked the repository."
-                    @error error_msg
-                    return (false, error_msg, nothing)
+                if !fork_exists
+                    @info "Creating fork..."
+                    try
+                        run(`gh repo fork $org/$repo --clone=false`)
+                    catch e
+                        error_msg = "Failed to create fork: $(sprint(showerror, e))"
+                        @error error_msg
+                        return (false, error_msg, nothing)
+                    end
+                    # Wait a moment for fork to be created
+                    sleep(2)
                 end
 
+                # Add fork remote
+                fork_url = "https://github.com/$fork_user/$repo.git"
                 run(`git remote add fork $fork_url`)
 
                 # Push to fork
@@ -194,6 +214,9 @@ function format_repository(
                     @error error_msg
                     return (false, error_msg, nothing)
                 end
+
+                # Wait for push to be processed
+                sleep(1)
 
                 # Create PR using gh CLI
                 pr_body = """
@@ -214,21 +237,21 @@ function format_repository(
                     print(f, pr_body)
                 end
 
-                # Extract org and repo from URL
-                m = match(r"github\.com/([^/]+)/([^/]+?)(?:\.git)?$", repo_url)
-                if m === nothing
-                    return (false, "Could not parse repository URL", nothing)
+                # Create PR
+                try
+                    pr_output = read(
+                        `gh pr create --repo $org/$repo --head $fork_user:fix-formatting --base $default_branch --title "Apply JuliaFormatter to fix code formatting" --body-file pr_body.txt`,
+                        String
+                    )
+                    rm("pr_body.txt")
+                    pr_url = strip(pr_output)
+                    return (true, "Successfully created pull request", pr_url)
+                catch e
+                    rm("pr_body.txt"; force = true)
+                    error_msg = "Failed to create PR: $(sprint(showerror, e))"
+                    @error error_msg
+                    return (false, error_msg, nothing)
                 end
-                org, repo = m.captures
-
-                pr_output = read(
-                    `gh pr create --repo $org/$repo --head $fork_user:fix-formatting --title "Apply JuliaFormatter to fix code formatting" --body-file pr_body.txt`,
-                    String
-                )
-                rm("pr_body.txt")
-
-                pr_url = strip(pr_output)
-                return (true, "Successfully created pull request", pr_url)
             end
         end
     catch e
@@ -326,9 +349,15 @@ function format_org_repositories(
 
     # Validate inputs early
     if create_pr && isempty(fork_user)
-        error_msg = "fork_user must be provided when create_pr=true"
-        @error error_msg
-        return (String[], String[], String[])
+        # Try to get current gh user
+        try
+            fork_user = strip(read(`gh api user --jq .login`, String))
+            @info "Using GitHub username from gh CLI: $fork_user"
+        catch
+            error_msg = "fork_user must be provided when create_pr=true (or configure gh CLI)"
+            @error error_msg
+            return (String[], String[], String[])
+        end
     end
 
     if push_to_master && create_pr
