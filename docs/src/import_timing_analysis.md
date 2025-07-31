@@ -6,51 +6,54 @@ The Import Timing Analysis functionality helps identify and analyze package impo
 
 Package import time significantly affects user experience, especially for interactive Julia usage. This module helps you:
 
-1. Measure import timing for individual packages and their dependencies
-2. Identify the major contributors to slow loading times
-3. Generate comprehensive reports with optimization recommendations
-4. Analyze entire organizations to find systemic performance issues
-5. Track import time regressions over time
+ 1. Measure import timing for individual packages and their dependencies
+ 2. Identify the major contributors to slow loading times
+ 3. Generate comprehensive reports with optimization recommendations
+ 4. Analyze entire organizations to find systemic performance issues
+ 5. Track import time regressions over time
 
 ## Functions
 
 ### Single Repository Analysis
 
 ```julia
-analyze_repo_import_timing(repo_path::String; package_name::String="", output_file::String="")
+analyze_repo_import_timing(repo_path::String; package_name::String = "", output_file::String = "")
 ```
 
 Analyze import timing for a single repository and generate a comprehensive report.
 
 **Parameters:**
-- `repo_path`: Path to the repository to analyze
-- `package_name`: Package name to analyze (auto-detected from Project.toml if not provided)
-- `output_file`: Optional path to save detailed JSON report
+
+  - `repo_path`: Path to the repository to analyze
+  - `package_name`: Package name to analyze (auto-detected from Project.toml if not provided)
+  - `output_file`: Optional path to save detailed JSON report
 
 **Returns:** `ImportTimingReport` object with analysis results
 
 ### Organization-wide Analysis
 
 ```julia
-analyze_org_import_timing(org::String; auth_token::String="", work_dir::String=mktempdir(), 
-                         output_dir::String="", max_repos::Int=0)
+analyze_org_import_timing(
+    org::String; auth_token::String = "", work_dir::String = mktempdir(),
+    output_dir::String = "", max_repos::Int = 0)
 ```
 
 Analyze import timing across all repositories in a GitHub organization.
 
 **Parameters:**
-- `org`: GitHub organization name
-- `auth_token`: GitHub authentication token for API access
-- `work_dir`: Working directory for cloning repositories
-- `output_dir`: Directory to save individual and summary reports
-- `max_repos`: Maximum number of repositories to analyze (0 = no limit)
+
+  - `org`: GitHub organization name
+  - `auth_token`: GitHub authentication token for API access
+  - `work_dir`: Working directory for cloning repositories
+  - `output_dir`: Directory to save individual and summary reports
+  - `max_repos`: Maximum number of repositories to analyze (0 = no limit)
 
 **Returns:** Dictionary mapping repository names to `ImportTimingReport` objects
 
 ### Report Generation
 
 ```julia
-generate_import_timing_report(repo_path::String, package_name::String="")
+generate_import_timing_report(repo_path::String, package_name::String = "")
 ```
 
 Generate a detailed import timing report without printing to console.
@@ -104,9 +107,9 @@ using OrgMaintenanceScripts
 report = analyze_repo_import_timing("/path/to/my/package")
 
 # Analysis with specific package name and detailed output
-report = analyze_repo_import_timing("/path/to/my/package"; 
-    package_name="MyPackage",
-    output_file="import_timing_report.json"
+report = analyze_repo_import_timing("/path/to/my/package";
+    package_name = "MyPackage",
+    output_file = "import_timing_report.json"
 )
 
 # View the results
@@ -123,14 +126,14 @@ end
 github_token = ENV["GITHUB_TOKEN"]
 
 # Analyze all repositories in the SciML organization
-results = analyze_org_import_timing("SciML"; 
-    auth_token=github_token,
-    output_dir="import_timing_reports",
-    max_repos=10  # Limit to first 10 repos for testing
+results = analyze_org_import_timing("SciML";
+    auth_token = github_token,
+    output_dir = "import_timing_reports",
+    max_repos = 10  # Limit to first 10 repos for testing
 )
 
 # Find the slowest loading packages
-slowest = sort([(name, r.total_import_time) for (name, r) in results], by=x->x[2], rev=true)
+slowest = sort([(name, r.total_import_time) for (name, r) in results], by = x->x[2], rev = true)
 println("Slowest packages:")
 for (name, time) in slowest[1:5]
     println("$name: $(round(time, digits=2))s")
@@ -158,53 +161,53 @@ end
 
 ### Import Time Classifications
 
-- ✅ **< 1 second**: Excellent user experience
-- ✅ **1-3 seconds**: Good performance, acceptable for most use cases
-- ⚠️ **3-10 seconds**: Moderate delay, room for improvement
-- ❌ **> 10 seconds**: Poor user experience, immediate optimization needed
+  - ✅ **< 1 second**: Excellent user experience
+  - ✅ **1-3 seconds**: Good performance, acceptable for most use cases
+  - ⚠️ **3-10 seconds**: Moderate delay, room for improvement
+  - ❌ **> 10 seconds**: Poor user experience, immediate optimization needed
 
 ### Major Contributors Analysis
 
 The analysis identifies packages that contribute significantly to import time:
 
-1. **Total Time**: Overall impact on import performance
-2. **Precompile vs Load Time**: Helps identify optimization strategies
-3. **Dependency Chain**: Shows the order dependencies are loaded
-4. **Local vs External**: Distinguishes your package from dependencies
+ 1. **Total Time**: Overall impact on import performance
+ 2. **Precompile vs Load Time**: Helps identify optimization strategies
+ 3. **Dependency Chain**: Shows the order dependencies are loaded
+ 4. **Local vs External**: Distinguishes your package from dependencies
 
 ### Common Optimization Strategies
 
 Based on timing patterns, the tool suggests:
 
-1. **High Precompilation Time**: Use PackageCompiler.jl for system images
-2. **Slow Dependencies**: Consider alternatives or lazy loading
-3. **Many Dependencies**: Reduce dependency count if possible
-4. **Large Packages**: Use package extensions or conditional loading
+ 1. **High Precompilation Time**: Use PackageCompiler.jl for system images
+ 2. **Slow Dependencies**: Consider alternatives or lazy loading
+ 3. **Many Dependencies**: Reduce dependency count if possible
+ 4. **Large Packages**: Use package extensions or conditional loading
 
 ## Organization Reports
 
 When analyzing entire organizations, additional insights are provided:
 
-- **Average Import Time**: Organization-wide performance metric
-- **Slowest Packages**: Ranking of packages by import time
-- **Problematic Dependencies**: Dependencies that slow down multiple packages
-- **Performance Distribution**: Understanding of organization-wide patterns
+  - **Average Import Time**: Organization-wide performance metric
+  - **Slowest Packages**: Ranking of packages by import time
+  - **Problematic Dependencies**: Dependencies that slow down multiple packages
+  - **Performance Distribution**: Understanding of organization-wide patterns
 
 ## Best Practices
 
 ### Development Workflow
 
-1. **Baseline Measurement**: Measure import time early in development
-2. **Dependency Review**: Carefully evaluate new dependencies
-3. **Regular Monitoring**: Track import time as part of CI/CD
-4. **User Testing**: Consider import time in user experience planning
+ 1. **Baseline Measurement**: Measure import time early in development
+ 2. **Dependency Review**: Carefully evaluate new dependencies
+ 3. **Regular Monitoring**: Track import time as part of CI/CD
+ 4. **User Testing**: Consider import time in user experience planning
 
 ### Optimization Techniques
 
-1. **Lazy Loading**: Use `Requires.jl` for optional dependencies
-2. **Package Extensions**: Use Julia 1.9+ package extensions for conditional features
-3. **Precompilation**: Optimize precompile statements
-4. **System Images**: Use PackageCompiler.jl for deployment scenarios
+ 1. **Lazy Loading**: Use `Requires.jl` for optional dependencies
+ 2. **Package Extensions**: Use Julia 1.9+ package extensions for conditional features
+ 3. **Precompilation**: Optimize precompile statements
+ 4. **System Images**: Use PackageCompiler.jl for deployment scenarios
 
 ### CI/CD Integration
 
@@ -269,24 +272,24 @@ end
 
 ### Common Issues
 
-1. **Analysis Fails**: Ensure the package can be imported successfully
-2. **Missing Dependencies**: Run `Pkg.instantiate()` in the target repository
-3. **Permission Errors**: Ensure read access to repositories
-4. **Timeout Issues**: Some packages may take very long to import
+ 1. **Analysis Fails**: Ensure the package can be imported successfully
+ 2. **Missing Dependencies**: Run `Pkg.instantiate()` in the target repository
+ 3. **Permission Errors**: Ensure read access to repositories
+ 4. **Timeout Issues**: Some packages may take very long to import
 
 ### Performance Considerations
 
-- Analysis runs in separate Julia processes to ensure clean timing
-- Large organizations may take significant time to analyze
-- Consider using `max_repos` parameter for initial testing
-- Network speed affects repository cloning time
+  - Analysis runs in separate Julia processes to ensure clean timing
+  - Large organizations may take significant time to analyze
+  - Consider using `max_repos` parameter for initial testing
+  - Network speed affects repository cloning time
 
 ### Interpreting Results
 
-- **Precompilation Time**: Usually one-time cost, optimizable with system images
-- **Load Time**: Runtime cost for every import, focus optimization here
-- **Dependency Chain**: Earlier dependencies affect later ones
-- **Local vs External**: You can only directly optimize local package timing
+  - **Precompilation Time**: Usually one-time cost, optimizable with system images
+  - **Load Time**: Runtime cost for every import, focus optimization here
+  - **Dependency Chain**: Earlier dependencies affect later ones
+  - **Local vs External**: You can only directly optimize local package timing
 
 ## Integration Examples
 
@@ -318,21 +321,21 @@ jobs:
 ```julia
 # Weekly organization analysis
 function weekly_import_analysis(org)
-    results = analyze_org_import_timing(org; 
-        auth_token=ENV["GITHUB_TOKEN"],
-        output_dir="weekly_reports/$(today())"
+    results = analyze_org_import_timing(org;
+        auth_token = ENV["GITHUB_TOKEN"],
+        output_dir = "weekly_reports/$(today())"
     )
-    
+
     # Generate alerts for regressions
     slow_packages = [name for (name, report) in results if report.total_import_time > 10.0]
-    
+
     if !isempty(slow_packages)
         println("⚠️ Slow packages detected:")
         for pkg in slow_packages
             println("- $pkg: $(results[pkg].total_import_time)s")
         end
     end
-    
+
     return results
 end
 ```

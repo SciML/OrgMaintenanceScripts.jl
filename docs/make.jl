@@ -5,7 +5,7 @@ DocMeta.setdocmeta!(
     OrgMaintenanceScripts,
     :DocTestSetup,
     :(using OrgMaintenanceScripts);
-    recursive = true,
+    recursive = true
 )
 
 makedocs(;
@@ -17,15 +17,15 @@ makedocs(;
         prettyurls = get(ENV, "CI", "false") == "true",
         canonical = "https://docs.sciml.ai/OrgMaintenanceScripts/stable/",
         edit_link = "main",
-        assets = ["assets/favicon.ico"],
+        assets = ["assets/favicon.ico"]
     ),
-    pages = ["Home" => "index.md", 
-             "Formatting Maintenance" => "formatting.md",
-             "Version Bumping" => "version_bumping.md",
-             "Compat Bumping" => "compat_bumping.md",
-             "Minimum Version Fixing" => "min_version_fixing.md",
-             "Version Check Finder" => "version_check_finder.md",
-             "Explicit Imports Fixing" => "explicit_imports_fixing.md"],
+    pages = ["Home" => "index.md",
+        "Formatting Maintenance" => "formatting.md",
+        "Version Bumping" => "version_bumping.md",
+        "Compat Bumping" => "compat_bumping.md",
+        "Minimum Version Fixing" => "min_version_fixing.md",
+        "Version Check Finder" => "version_check_finder.md",
+        "Explicit Imports Fixing" => "explicit_imports_fixing.md"]
 )
 
 deploydocs(; repo = "github.com/SciML/OrgMaintenanceScripts.jl", devbranch = "main")

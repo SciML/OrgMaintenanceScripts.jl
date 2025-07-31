@@ -8,30 +8,30 @@ Returns a vector of absolute paths to Project.toml files.
 """
 function find_all_project_tomls(repo_path::String)
     project_files = String[]
-    
+
     # Check for main Project.toml
     main_project = joinpath(repo_path, "Project.toml")
     if isfile(main_project)
         push!(project_files, main_project)
     end
-    
+
     # Check for JuliaProject.toml as alternative
     alt_project = joinpath(repo_path, "JuliaProject.toml")
     if isfile(alt_project)
         push!(project_files, alt_project)
     end
-    
+
     # Check for lib directory with subprojects
     lib_dir = joinpath(repo_path, "lib")
     if isdir(lib_dir)
-        for subdir in readdir(lib_dir; join=false)
+        for subdir in readdir(lib_dir; join = false)
             subproject_path = joinpath(lib_dir, subdir, "Project.toml")
             if isfile(subproject_path)
                 push!(project_files, subproject_path)
             end
         end
     end
-    
+
     return project_files
 end
 
@@ -45,8 +45,8 @@ function get_project_info(project_path::String)
     project = TOML.parsefile(project_path)
     name = get(project, "name", basename(dirname(project_path)))
     uuid = get(project, "uuid", nothing)
-    
-    return (name=name, uuid=uuid, path=project_path, project_dict=project)
+
+    return (name = name, uuid = uuid, path = project_path, project_dict = project)
 end
 
 """
