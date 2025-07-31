@@ -1,6 +1,5 @@
 # OrgMaintenanceScripts.jl
 
-
 ```@meta
 CurrentModule = OrgMaintenanceScripts
 ```
@@ -11,16 +10,16 @@ Documentation for [OrgMaintenanceScripts](https://github.com/SciML/OrgMaintenanc
 
 This package provides maintenance scripts for SciML organization repositories, including:
 
-- **Code Formatting**: Automated formatting with JuliaFormatter across entire organizations
-- **Version Bumping**: Automatically bump minor versions in Project.toml files
-- **Package Registration**: Register packages to Julia registries
-- **Minimum Version Fixing**: Fix minimum version compatibility bounds to pass downgrade CI tests
-- **Compat Bumping**: Automatically update package compatibility bounds for dependencies
-- **Version Check Finding**: Find outdated VERSION checks that can be removed
-- **Invalidation Analysis**: Use SnoopCompileCore to detect performance bottlenecks
-- **Import Timing Analysis**: Analyze package loading times with @time_imports
-- **Explicit Imports Fixing**: Automatically fix implicit imports and remove unused imports
-- **Organization-wide Operations**: Process entire organizations at once
+  - **Code Formatting**: Automated formatting with JuliaFormatter across entire organizations
+  - **Version Bumping**: Automatically bump minor versions in Project.toml files
+  - **Package Registration**: Register packages to Julia registries
+  - **Minimum Version Fixing**: Fix minimum version compatibility bounds to pass downgrade CI tests
+  - **Compat Bumping**: Automatically update package compatibility bounds for dependencies
+  - **Version Check Finding**: Find outdated VERSION checks that can be removed
+  - **Invalidation Analysis**: Use SnoopCompileCore to detect performance bottlenecks
+  - **Import Timing Analysis**: Analyze package loading times with @time_imports
+  - **Explicit Imports Fixing**: Automatically fix implicit imports and remove unused imports
+  - **Organization-wide Operations**: Process entire organizations at once
 
 ## Usage Examples
 
@@ -30,13 +29,15 @@ This package provides maintenance scripts for SciML organization repositories, i
 using OrgMaintenanceScripts
 
 # Format a single repository
-success, message, pr_url = format_repository(
+success, message,
+pr_url = format_repository(
     "https://github.com/SciML/Example.jl.git";
     fork_user = "myusername"
 )
 
 # Format all repos with failing CI
-successes, failures, pr_urls = format_org_repositories(
+successes, failures,
+pr_urls = format_org_repositories(
     "SciML";
     fork_user = "myusername",
     only_failing_ci = true
@@ -55,7 +56,7 @@ println("Registered packages: ", result.registered)
 println("Failed packages: ", result.failed)
 
 # Process all repositories in the SciML organization
-results = bump_and_register_org("SciML"; auth_token="your_github_token")
+results = bump_and_register_org("SciML"; auth_token = "your_github_token")
 
 for (repo, result) in results
     println("$repo:")
@@ -76,7 +77,7 @@ success = fix_repo_min_versions("SciML/OrdinaryDiffEq.jl")
 results = fix_org_min_versions("SciML")
 
 # Process only specific repositories
-results = fix_org_min_versions("SciML"; only_repos=["OrdinaryDiffEq.jl", "DiffEqBase.jl"])
+results = fix_org_min_versions("SciML"; only_repos = ["OrdinaryDiffEq.jl", "DiffEqBase.jl"])
 ```
 
 ### Compat Bumping
@@ -91,7 +92,7 @@ for (pkg, info) in updates
 end
 
 # Bump compat bounds and test
-success = bump_compat_and_test("/path/to/MyPackage.jl"; 
+success = bump_compat_and_test("/path/to/MyPackage.jl";
     create_pr = true,
     fork_user = "myusername"
 )
@@ -112,11 +113,11 @@ using OrgMaintenanceScripts
 checks = find_version_checks_in_repo("/path/to/MyPackage.jl")
 
 # Find old version checks across an organization
-results = find_version_checks_in_org("SciML"; min_version=v"1.10")
+results = find_version_checks_in_org("SciML"; min_version = v"1.10")
 print_version_check_summary(results)
 
 # Use custom minimum version
-results = find_version_checks_in_org("MyOrg"; min_version=v"1.9", max_repos=10)
+results = find_version_checks_in_org("MyOrg"; min_version = v"1.9", max_repos = 10)
 ```
 
 ### Explicit Imports Fixing
@@ -128,10 +129,10 @@ using OrgMaintenanceScripts
 success, iterations, report = fix_explicit_imports("/path/to/MyPackage.jl")
 
 # Fix and create PR for a repository
-fix_repo_explicit_imports("MyOrg/MyPackage.jl"; create_pr=true)
+fix_repo_explicit_imports("MyOrg/MyPackage.jl"; create_pr = true)
 
 # Fix all packages in an organization
-results = fix_org_explicit_imports("MyOrg"; create_prs=true)
+results = fix_org_explicit_imports("MyOrg"; create_prs = true)
 ```
 
 ## Contents
