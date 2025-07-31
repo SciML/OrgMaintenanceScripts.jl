@@ -9,7 +9,7 @@ using Pkg
         success, message, pr_url = format_repository(
             "https://github.com/test/test.jl.git";
             create_pr = true,
-            fork_user = ""
+            fork_user = "",
         )
         # The function should fail either because:
         # 1. gh CLI is not configured (fork_user error)
@@ -25,7 +25,7 @@ using Pkg
             "https://github.com/test/test.jl.git";
             push_to_master = true,
             create_pr = true,
-            fork_user = "test"
+            fork_user = "test",
         )
         @test !success
         @test occursin("Cannot both push_to_master and create_pr", message)
@@ -49,7 +49,7 @@ using Pkg
         try
             result = OrgMaintenanceScripts.has_failing_formatter_ci(
                 "SciML",
-                "DifferentialEquations.jl"
+                "DifferentialEquations.jl",
             )
             @test isa(result, Bool)
         catch e

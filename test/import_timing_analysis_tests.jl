@@ -5,33 +5,33 @@ using Dates
 @testset "Import Timing Analysis Tests" begin
     # Create a simple test package structure
     test_dir = mktempdir()
-
+    
     # Create Project.toml
     project_toml = joinpath(test_dir, "Project.toml")
     write(project_toml, """
     name = "TestImportTimingPackage"
     uuid = "12345678-1234-1234-1234-123456789def"
     version = "0.1.0"
-
+    
     [deps]
     Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
     """)
-
+    
     # Create src directory and main file
     src_dir = joinpath(test_dir, "src")
     mkpath(src_dir)
-
+    
     main_file = joinpath(src_dir, "TestImportTimingPackage.jl")
     write(main_file, """
     module TestImportTimingPackage
-
+    
     using Dates
-
+    
     # Simple function
     function get_current_time()
         return now()
     end
-
+    
     # Function that might take some time to compile
     function complex_computation(x::T) where T
         result = zero(T)
@@ -40,12 +40,12 @@ using Dates
         end
         return result
     end
-
+    
     export get_current_time, complex_computation
-
+    
     end # module
     """)
-
+    
     @testset "ImportTiming and ImportTimingReport structures" begin
         # Test ImportTiming
         timing = ImportTiming(
@@ -57,7 +57,7 @@ using Dates
             1,        # dep_count
             false     # is_local
         )
-
+        
         @test timing.package_name == "TestPackage"
         @test timing.total_time == 1.5
         @test timing.precompile_time == 0.8
@@ -65,7 +65,7 @@ using Dates
         @test timing.dependencies == ["Dates"]
         @test timing.dep_count == 1
         @test timing.is_local == false
-
+        
         # Test ImportTimingReport
         report = ImportTimingReport(
             "test_repo",
@@ -78,7 +78,7 @@ using Dates
             ["recommendation1"],
             "Raw @time_imports output"
         )
-
+        
         @test report.repo == "test_repo"
         @test report.package_name == "TestPackage"
         @test report.total_import_time == 2.5
@@ -87,7 +87,7 @@ using Dates
         @test length(report.recommendations) == 1
         @test !isempty(report.raw_output)
     end
-
+    
     @testset "parse_import_timings" begin
         # Create mock timing data
         mock_data = Dict(
@@ -121,14 +121,14 @@ using Dates
             "raw_output" => "Mock @time_imports output",
             "total_entries" => 3
         )
-
+        
         import_timings = OrgMaintenanceScripts.parse_import_timings(mock_data)
-
+        
         @test length(import_timings) == 2  # Dates and TestPackage
-
+        
         # Should be sorted by total time (descending)
         @test import_timings[1].total_time >= import_timings[2].total_time
-
+        
         # Find Dates entry
         dates_timing = findfirst(t -> t.package_name == "Dates", import_timings)
         @test dates_timing !== nothing
@@ -137,7 +137,7 @@ using Dates
         @test dates_entry.precompile_time == 0.5
         @test dates_entry.load_time == 0.1
         @test !dates_entry.is_local
-
+        
         # Find TestPackage entry
         test_timing = findfirst(t -> t.package_name == "TestPackage", import_timings)
         @test test_timing !== nothing
@@ -147,7 +147,7 @@ using Dates
         @test test_entry.load_time == 0.0
         @test test_entry.is_local
     end
-
+    
     @testset "write_import_timing_report" begin
         # Create a test report
         timing = ImportTiming(
@@ -159,7 +159,7 @@ using Dates
             1,
             false
         )
-
+        
         report = ImportTimingReport(
             "test_repo",
             "TestPackage",
@@ -171,13 +171,13 @@ using Dates
             ["recommendation1"],
             "Raw output"
         )
-
+        
         # Write report to file
         output_file = joinpath(test_dir, "test_import_report.json")
         OrgMaintenanceScripts.write_import_timing_report(report, output_file)
-
+        
         @test isfile(output_file)
-
+        
         # Read and verify content
         content = read(output_file, String)
         @test contains(content, "test_repo")
@@ -186,15 +186,15 @@ using Dates
         @test contains(content, "recommendation1")
         @test contains(content, "Raw output")
     end
-
+    
     @testset "generate_import_timing_report" begin
         # Test with our mock package
         # Note: This test might fail if the package can't be imported
         report = generate_import_timing_report(test_dir)
-
+        
         @test isa(report, ImportTimingReport)
         @test report.repo == basename(test_dir)
-
+        
         # If analysis failed, verify error handling
         if report.total_import_time == -1.0
             @test contains(report.summary, "failed")
@@ -210,20 +210,20 @@ using Dates
             @test !isempty(report.recommendations)
             @test isa(report.major_contributors, Vector{ImportTiming})
         end
-
+        
         @test isa(report.analysis_time, DateTime)
     end
-
+    
     @testset "analyze_repo_import_timing" begin
         # Test the main analysis function
         # Create a temporary output file
         output_file = joinpath(test_dir, "timing_analysis_output.json")
-
-        report = analyze_repo_import_timing(test_dir; output_file = output_file)
-
+        
+        report = analyze_repo_import_timing(test_dir; output_file=output_file)
+        
         @test isa(report, ImportTimingReport)
         @test report.repo == basename(test_dir)
-
+        
         # If analysis failed, verify error handling
         if report.total_import_time == -1.0
             @test contains(report.summary, "failed")
@@ -236,15 +236,15 @@ using Dates
             @test isfile(output_file)
         end
     end
-
+    
     @testset "generate_org_import_summary_report" begin
         # Create mock results for organization summary
         timing1 = ImportTiming("FastPackage", 0.5, 0.3, 0.2, ["Base"], 1, true)
         timing2 = ImportTiming("SlowDep", 2.0, 1.5, 0.5, [], 0, false)
-
+        
         report1 = ImportTimingReport(
             "FastRepo",
-            "FastPackage",
+            "FastPackage", 
             1.0,
             [timing1],
             ["FastPackage"],
@@ -253,7 +253,7 @@ using Dates
             ["Great job!"],
             "Mock output 1"
         )
-
+        
         report2 = ImportTimingReport(
             "SlowRepo",
             "SlowPackage",
@@ -265,20 +265,19 @@ using Dates
             ["Optimize dependencies"],
             "Mock output 2"
         )
-
+        
         results = Dict(
             "org/FastRepo" => report1,
             "org/SlowRepo" => report2
         )
-
+        
         # Generate summary report
         output_dir = mktempdir()
-        summary_file = OrgMaintenanceScripts.generate_org_import_summary_report(
-            "TestOrg", results, output_dir)
-
+        summary_file = OrgMaintenanceScripts.generate_org_import_summary_report("TestOrg", results, output_dir)
+        
         @test isfile(summary_file)
         @test endswith(summary_file, "TestOrg_import_timing_summary.md")
-
+        
         # Check content
         content = read(summary_file, String)
         @test contains(content, "Import Timing Analysis Report for TestOrg")
@@ -288,24 +287,23 @@ using Dates
         @test contains(content, "5.0s")  # SlowRepo time
         @test contains(content, "SlowDep")  # Problematic dependency
     end
-
+    
     @testset "Edge cases" begin
         # Test with non-existent directory
         report = generate_import_timing_report("/nonexistent/path")
         @test report.total_import_time == -1.0  # Indicates error
         @test contains(report.summary, "failed")
-
+        
         # Test with directory without Project.toml
         empty_dir = mktempdir()
         report = generate_import_timing_report(empty_dir)
         @test report.total_import_time == -1.0  # Indicates error
         @test contains(report.summary, "failed")
-
+        
         # Test with invalid package name - this should throw during the process
-        @test_throws Exception analyze_import_timing_in_process(
-            test_dir, "NonExistentPackage")
+        @test_throws Exception analyze_import_timing_in_process(test_dir, "NonExistentPackage")
     end
-
+    
     # Clean up
-    rm(test_dir; recursive = true)
+    rm(test_dir; recursive=true)
 end

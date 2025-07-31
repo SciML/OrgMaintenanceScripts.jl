@@ -13,12 +13,12 @@ current_repo = dirname(@__DIR__)  # OrgMaintenanceScripts.jl repo
 try
     # Note: This will analyze the OrgMaintenanceScripts package itself
     report = analyze_repo_import_timing(current_repo)
-
+    
     println("Analysis completed for: $(report.repo)")
     println("Package: $(report.package_name)")
     println("Total import time: $(round(report.total_import_time, digits=2)) seconds")
     println("Summary: $(report.summary)")
-
+    
     if !isempty(report.major_contributors)
         println("\nTop import contributors:")
         for (i, timing) in enumerate(report.major_contributors[1:min(5, end)])
@@ -26,14 +26,14 @@ try
             println("  $i. $(timing.package_name)$local_marker - $(round(timing.total_time, digits=2))s")
         end
     end
-
+    
     if !isempty(report.dependency_chain)
         println("\nDependency load order (first 5):")
         for (i, dep) in enumerate(report.dependency_chain[1:min(5, end)])
             println("  $i. $dep")
         end
     end
-
+    
 catch e
     println("Note: Analysis failed - this might happen if the package structure is complex")
     println("Error: $e")
