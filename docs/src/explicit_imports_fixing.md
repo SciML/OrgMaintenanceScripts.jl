@@ -61,7 +61,6 @@ end
 The fixer follows this iterative process:
 
  1. **Run ExplicitImports.jl checks** on the package
-
  2. **Parse the output** to identify specific issues:
     
       + Missing explicit imports (e.g., using `println` without `using Base: println`)

@@ -17,9 +17,7 @@ using Pkg
         @test !success
         @test pr_url === nothing
         # Check for either error message
-        @test occursin(
-            "fork_user must be provided when create_pr=true (or configure gh CLI)",
-            message) ||
+        @test occursin("fork_user must be provided when create_pr=true (or configure gh CLI)", message) || 
               occursin("Error:", message)
 
         # Test with both push_to_master and create_pr
