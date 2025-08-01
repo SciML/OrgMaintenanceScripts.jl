@@ -128,4 +128,5 @@ using TOML
     include("import_timing_analysis_tests.jl")
     include("explicit_imports_fixer_tests.jl")
     include("multiprocess_testing_tests.jl")
+    include("documentation_cleanup_tests.jl")
 end
