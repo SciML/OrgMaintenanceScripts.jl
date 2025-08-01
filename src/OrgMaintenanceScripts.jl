@@ -31,6 +31,9 @@ include("import_timing_analysis.jl")
 # Include explicit imports fixing functionality
 include("explicit_imports_fixer.jl")
 
+# Include multiprocess testing functionality
+include("multiprocess_testing.jl")
+
 export bump_and_register_repo, bump_and_register_org
 export format_repository, format_org_repositories
 export update_manifests, update_project_tomls, update_project_versions_all
@@ -50,5 +53,9 @@ export print_version_check_summary
 export fix_explicit_imports, fix_repo_explicit_imports, fix_org_explicit_imports
 export run_explicit_imports_check_all
 export find_all_project_tomls, get_project_info, is_subpackage, get_relative_project_path
+export TestGroup, TestResult, TestSummary
+export parse_ci_workflow, setup_test_environment, run_single_test_group
+export run_multiprocess_tests, generate_test_summary_report, print_test_summary
+export run_tests_from_repo
 
 end # module OrgMaintenanceScripts

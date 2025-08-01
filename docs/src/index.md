@@ -19,6 +19,7 @@ This package provides maintenance scripts for SciML organization repositories, i
   - **Invalidation Analysis**: Use SnoopCompileCore to detect performance bottlenecks
   - **Import Timing Analysis**: Analyze package loading times with @time_imports
   - **Explicit Imports Fixing**: Automatically fix implicit imports and remove unused imports
+  - **Multiprocess Testing**: Run tests in parallel similar to GitHub Actions CI workflows
   - **Organization-wide Operations**: Process entire organizations at once
 
 ## Usage Examples
@@ -135,10 +136,29 @@ fix_repo_explicit_imports("MyOrg/MyPackage.jl"; create_pr = true)
 results = fix_org_explicit_imports("MyOrg"; create_prs = true)
 ```
 
+### Multiprocess Testing
+
+```julia
+using OrgMaintenanceScripts
+
+# Run tests in parallel for a local package
+summary = run_multiprocess_tests(".github/workflows/CI.yml", ".", log_dir="test_logs")
+print_test_summary(summary)
+
+# Test a remote repository
+summary = run_tests_from_repo("https://github.com/SciML/OrdinaryDiffEq.jl")
+
+# Generate detailed report
+generate_test_summary_report(summary, "test_report.txt")
+
+# Check which groups failed
+failed_groups = [r.group.name for r in summary.results if !r.success]
+```
+
 ## Contents
 
 ```@contents
-Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md", "invalidation_analysis.md", "import_timing_analysis.md", "explicit_imports_fixing.md"]
+Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md", "invalidation_analysis.md", "import_timing_analysis.md", "explicit_imports_fixing.md", "multiprocess_testing.md"]
 Depth = 2
 ```
 
