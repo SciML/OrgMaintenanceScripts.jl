@@ -110,12 +110,16 @@ function cleanup_gh_pages_docs(repo_path::String;
         error_message = nothing
     )
     
+    # Track if we should return early
+    early_return_result = nothing
+    
     try
         cd(repo_path) do
             # Check if gh-pages branch exists
             if !_branch_exists("gh-pages")
                 @warn "No gh-pages branch found in repository"
-                return result
+                early_return_result = result
+                return
             end
             
             # Store current branch to restore later
@@ -138,7 +142,7 @@ function cleanup_gh_pages_docs(repo_path::String;
                 
                 if dry_run
                     sim_result = _simulate_cleanup(large_files, old_versions)
-                    return (
+                    early_return_result = (
                         files_removed = sim_result.files_removed,
                         dirs_removed = sim_result.dirs_removed,
                         size_saved_mb = sim_result.size_saved_mb,
@@ -148,6 +152,7 @@ function cleanup_gh_pages_docs(repo_path::String;
                         error_message = nothing,
                         dry_run = true
                     )
+                    return
                 end
                 
                 # Perform actual cleanup
@@ -182,6 +187,11 @@ Auto-generated cleanup to reduce repository size."`)
     catch e
         result = merge(result, (success=false, error_message=string(e)))
         @error "Cleanup failed" exception=e
+    end
+    
+    # Return early result if set (for dry-run or no gh-pages cases)
+    if early_return_result !== nothing
+        return early_return_result
     end
     
     return result
@@ -230,7 +240,7 @@ function analyze_gh_pages_bloat(repo_path::String)
             # Analyze current state
             large_files = _find_large_files(1.0)  # Files > 1MB
             versions = _find_all_versions()
-            total_size = sum(file.size_mb for file in large_files)
+            total_size = isempty(large_files) ? 0.0 : sum(file.size_mb for file in large_files)
             
             return (
                 total_size_mb = total_size,
@@ -437,8 +447,12 @@ function _find_all_versions()
 end
 
 function _simulate_cleanup(large_files, old_versions)
-    total_size_mb = sum(file.size_mb for file in large_files if 
-                       any(startswith(file.path, version * "/") for version in old_versions))
+    total_size_mb = if isempty(large_files) || isempty(old_versions)
+        0.0
+    else
+        sum(file.size_mb for file in large_files if 
+            any(startswith(file.path, version * "/") for version in old_versions))
+    end
     
     @info "DRY RUN - Would remove:"
     @info "  $(length(large_files)) large files ($(round(total_size_mb, digits=1)) MB)"
@@ -551,7 +565,7 @@ function _generate_analysis_report(large_files, versions)
     push!(report, "Large files (>1MB): $(length(large_files))")
     
     if !isempty(large_files)
-        total_size = sum(file.size_mb for file in large_files)
+        total_size = isempty(large_files) ? 0.0 : sum(file.size_mb for file in large_files)
         push!(report, "Total size of large files: $(round(total_size, digits=1)) MB")
         push!(report, "")
         push!(report, "Largest files:")
