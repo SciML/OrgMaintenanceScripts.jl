@@ -25,7 +25,11 @@ makedocs(;
         "Compat Bumping" => "compat_bumping.md",
         "Minimum Version Fixing" => "min_version_fixing.md",
         "Version Check Finder" => "version_check_finder.md",
-        "Explicit Imports Fixing" => "explicit_imports_fixing.md"]
+        "Invalidation Analysis" => "invalidation_analysis.md",
+        "Import Timing Analysis" => "import_timing_analysis.md",
+        "Explicit Imports Fixing" => "explicit_imports_fixing.md",
+        "Documentation Cleanup" => "documentation_cleanup.md",
+        "Multiprocess Testing" => "multiprocess_testing.md"]
 )
 
 deploydocs(; repo = "github.com/SciML/OrgMaintenanceScripts.jl", devbranch = "main")

@@ -19,6 +19,7 @@ This package provides maintenance scripts for SciML organization repositories, i
   - **Invalidation Analysis**: Use SnoopCompileCore to detect performance bottlenecks
   - **Import Timing Analysis**: Analyze package loading times with @time_imports
   - **Explicit Imports Fixing**: Automatically fix implicit imports and remove unused imports
+  - **Documentation Cleanup**: Remove bloated documentation files from gh-pages branches
   - **Multiprocess Testing**: Run tests in parallel similar to GitHub Actions CI workflows
   - **Organization-wide Operations**: Process entire organizations at once
 
@@ -155,10 +156,36 @@ generate_test_summary_report(summary, "test_report.txt")
 failed_groups = [r.group.name for r in summary.results if !r.success]
 ```
 
+### Documentation Cleanup
+
+```julia
+using OrgMaintenanceScripts
+
+# Analyze documentation bloat
+analysis = analyze_gh_pages_bloat("/path/to/repo")
+println("Repository has $(analysis.total_size_mb) MB of bloat")
+
+# Test cleanup safely with dry run
+result = cleanup_gh_pages_docs("/path/to/repo", dry_run=true)
+println("Would save: $(result.size_saved_mb) MB")
+
+# Perform actual cleanup
+result = cleanup_gh_pages_docs("/path/to/repo")
+if result.success
+    println("Cleaned $(result.files_removed) files")
+    println("⚠️  Run: git push --force origin gh-pages")
+end
+
+# Clean multiple repositories
+repos = ["https://github.com/SciML/Repo1.jl.git", "https://github.com/SciML/Repo2.jl.git"]
+results = cleanup_org_gh_pages_docs(repos, dry_run=true)
+total_savings = sum(r.size_saved_mb for r in results if r.success)
+```
+
 ## Contents
 
 ```@contents
-Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md", "invalidation_analysis.md", "import_timing_analysis.md", "explicit_imports_fixing.md", "multiprocess_testing.md"]
+Pages = ["formatting.md", "version_bumping.md", "compat_bumping.md", "min_version_fixing.md", "version_check_finder.md", "invalidation_analysis.md", "import_timing_analysis.md", "explicit_imports_fixing.md", "documentation_cleanup.md", "multiprocess_testing.md"]
 Depth = 2
 ```
 
