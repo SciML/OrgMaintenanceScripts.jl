@@ -9,8 +9,9 @@ The version bumping and registration tools:
   - Automatically increment minor version numbers in Project.toml files
   - Handle main packages and subpackages in `lib/` directories
   - Create git commits for version changes
-  - Register packages to Julia registries (placeholder functionality)
+  - Register packages to Julia registries using LocalRegistry.jl
   - Process entire GitHub organizations at once
+  - Support monorepo structures with interdependent packages
 
 ## Functions
 
@@ -61,44 +62,53 @@ end
 
 ### `register_package`
 
-Register a Julia package to the specified registry.
+Register a Julia package to the specified registry using LocalRegistry.
 
 ```julia
-register_package(package_dir::String; registry_url = "https://github.com/JuliaRegistries/General")
+register_package(package_dir::String; registry = "General", push::Bool = false)
 ```
 
 **Parameters:**
 
   - `package_dir`: Directory containing the package to register
-  - `registry_url`: URL of the target registry (default: General registry)
+  - `registry`: Name or path to the registry (default: "General")
+  - `push`: Whether to push the registration to the remote registry (default: false)
 
-**Returns:** `true` on success
+**Returns:** `true` on success, `false` on failure
 
-!!! note
-    
-    This is currently a placeholder function. In practice, it would use `LocalRegistry.jl` or similar tools for actual registration.
+**Example:**
+
+```julia
+# Register to General registry
+register_package("/path/to/MyPackage")
+
+# Register to custom registry with push
+register_package("/path/to/MyPackage"; registry="MyRegistry", push=true)
+```
 
 ### `bump_and_register_repo`
 
-Bump minor versions and register all packages in a repository.
+Bump minor versions and register all packages in a repository (including monorepos).
 
 ```julia
-bump_and_register_repo(repo_path::String; registry_url = "https://github.com/JuliaRegistries/General")
+bump_and_register_repo(repo_path::String; registry = "General", push::Bool = false)
 ```
 
 **Parameters:**
 
   - `repo_path`: Path to the repository
-  - `registry_url`: URL of the target registry
+  - `registry`: Name or path to the registry (default: "General")
+  - `push`: Whether to push registrations to remote registry (default: false)
 
 **Returns:** Named tuple `(registered=String[], failed=String[])`
 
 This function:
 
- 1. Updates the main Project.toml (if exists)
- 2. Updates all lib/*/Project.toml files
- 3. Attempts to register each package
+ 1. Bumps minor versions in all Project.toml files
+ 2. Collects all package directories (main + lib/*)
+ 3. Uses brute-force dependency resolution for registration order
  4. Commits version changes to git
+ 5. Handles monorepo structures with interdependent packages
 
 **Example:**
 
@@ -106,6 +116,46 @@ This function:
 result = bump_and_register_repo("/path/to/MyPackage.jl")
 println("Successfully registered: ", result.registered)
 println("Failed to register: ", result.failed)
+```
+
+### `register_monorepo_packages`
+
+Register all packages in a monorepo without bumping versions.
+
+```julia
+register_monorepo_packages(repo_path::String; registry = "General", push::Bool = false)
+```
+
+**Parameters:**
+
+  - `repo_path`: Path to the repository root directory
+  - `registry`: Name or path to the registry (default: "General")
+  - `push`: Whether to push registrations to remote registry (default: false)
+
+**Returns:** Named tuple `(registered=String[], failed=String[])`
+
+This function is similar to `bump_and_register_repo` but only performs registration without modifying package versions. It's useful when:
+
+  - Versions have already been bumped manually
+  - You want to register packages at their current versions
+  - You need to retry registration after fixing issues
+
+**Features:**
+
+  - Scans for all packages (main Project.toml and lib/*/Project.toml)
+  - Uses brute-force dependency resolution
+  - Handles circular dependencies and complex dependency graphs
+  - Does NOT modify any Project.toml files or create commits
+
+**Example:**
+
+```julia
+# Register all packages in a monorepo
+result = register_monorepo_packages("/path/to/repo")
+println("Successfully registered: ", length(result.registered), " packages")
+
+# Register with custom registry
+register_monorepo_packages("/path/to/repo"; registry="MyRegistry", push=true)
 ```
 
 ### `get_org_repos`
@@ -129,7 +179,8 @@ Bump minor versions and register all packages in all repositories of a GitHub or
 
 ```julia
 bump_and_register_org(org::String;
-    registry_url = "https://github.com/JuliaRegistries/General",
+    registry = "General",
+    push::Bool = false,
     auth_token::String = "",
     work_dir::String = mktempdir())
 ```
@@ -137,8 +188,9 @@ bump_and_register_org(org::String;
 **Parameters:**
 
   - `org`: GitHub organization name
-  - `registry_url`: URL of the target registry
-  - `auth_token`: GitHub authentication token
+  - `registry`: Name or path to the registry (default: "General")
+  - `push`: Whether to push registrations to remote registry (default: false)
+  - `auth_token`: GitHub authentication token (recommended for rate limits)
   - `work_dir`: Working directory for cloning repositories
 
 **Returns:** Dictionary mapping repository names to results
@@ -234,17 +286,18 @@ The functions include comprehensive error handling:
 ## Limitations
 
   - Currently only bumps minor versions (not major or patch)
-  - Registration is a placeholder (requires LocalRegistry.jl integration)
   - Assumes semantic versioning (MAJOR.MINOR.PATCH)
   - Requires git to be configured with appropriate credentials
+  - Registration requires appropriate permissions for the target registry
 
 ## API Summary
 
-| Function                                          | Description                    |
-|:------------------------------------------------- |:------------------------------ |
-| `bump_minor_version(version_str)`                 | Increment minor version number |
-| `update_project_version(project_path)`            | Update version in Project.toml |
-| `register_package(package_dir; registry_url)`     | Register package (placeholder) |
-| `bump_and_register_repo(repo_path; registry_url)` | Process entire repository      |
-| `get_org_repos(org; auth_token)`                  | List organization repositories |
-| `bump_and_register_org(org; kwargs...)`           | Process entire organization    |
+| Function                                          | Description                              |
+|:------------------------------------------------- |:---------------------------------------- |
+| `bump_minor_version(version_str)`                 | Increment minor version number           |
+| `update_project_version(project_path)`            | Update version in Project.toml          |
+| `register_package(package_dir; kwargs...)`        | Register package using LocalRegistry     |
+| `bump_and_register_repo(repo_path; kwargs...)`    | Bump versions and register all packages  |
+| `register_monorepo_packages(repo_path; kwargs...)` | Register monorepo packages without bumping |
+| `get_org_repos(org; auth_token)`                  | List organization repositories           |
+| `bump_and_register_org(org; kwargs...)`           | Process entire organization              |
