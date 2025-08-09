@@ -88,6 +88,23 @@ end
     register_package(package_dir::String; registry="General", push::Bool=false)
 
 Register a Julia package to the specified registry using LocalRegistry.
+
+# Arguments
+- `package_dir::String`: Path to the directory containing the package to register
+- `registry`: Name or path to the registry (default: "General")
+- `push::Bool`: Whether to push the registration to the remote registry (default: false)
+
+# Returns
+- `Bool`: `true` if registration succeeded, `false` otherwise
+
+# Examples
+```julia
+# Register a package to the General registry
+register_package("/path/to/MyPackage")
+
+# Register to a custom registry with push
+register_package("/path/to/MyPackage"; registry="MyRegistry", push=true)
+```
 """
 function register_package(package_dir::String; registry = "General", push::Bool = false)
     try
@@ -107,9 +124,39 @@ end
 """
     bump_and_register_repo(repo_path::String; registry="General", push::Bool=false)
 
-Bump minor versions and register all packages in a repository.
-This handles the main Project.toml and all lib/*/Project.toml files.
-Uses a brute-force approach to handle dependency ordering.
+Bump minor versions and register all packages in a repository (monorepo).
+
+This function handles both single-package repositories and monorepos with multiple packages.
+It automatically bumps the minor version of all packages found (main package and lib/* subpackages),
+then registers them in dependency order using a brute-force approach.
+
+# Arguments
+- `repo_path::String`: Path to the repository root directory
+- `registry`: Name or path to the registry (default: "General")
+- `push::Bool`: Whether to push the registration to the remote registry (default: false)
+
+# Returns
+A NamedTuple with:
+- `registered::Vector{String}`: Names of successfully registered packages
+- `failed::Vector{String}`: Names of packages that failed to register
+
+# Behavior
+1. Bumps minor versions of all Project.toml files found
+2. Collects all package directories (main + lib/*)
+3. Attempts to register packages iteratively until all succeed or no progress
+4. Automatically commits version bumps if any packages were processed
+5. Handles dependency ordering by retrying failed registrations
+
+# Examples
+```julia
+# Bump and register all packages in a repository
+result = bump_and_register_repo("/path/to/repo")
+println("Registered: ", result.registered)
+println("Failed: ", result.failed)
+
+# Use custom registry with push
+bump_and_register_repo("/path/to/repo"; registry="MyRegistry", push=true)
+```
 """
 function bump_and_register_repo(repo_path::String; registry = "General", push::Bool = false)
     if !isdir(repo_path)
@@ -212,9 +259,42 @@ end
 """
     register_monorepo_packages(repo_path::String; registry="General", push::Bool=false)
 
-Register all packages in a monorepo (main package and lib/* subpackages) without version bumping.
-Uses a brute-force approach to handle dependency ordering, retrying registration
-until all packages are registered or no more progress can be made.
+Register all packages in a monorepo without bumping versions.
+
+This function is similar to `bump_and_register_repo` but only performs registration
+without modifying package versions. Useful when versions have already been bumped
+or when you want to register packages at their current versions.
+
+# Arguments
+- `repo_path::String`: Path to the repository root directory
+- `registry`: Name or path to the registry (default: "General")
+- `push::Bool`: Whether to push the registration to the remote registry (default: false)
+
+# Returns
+A NamedTuple with:
+- `registered::Vector{String}`: Names of successfully registered packages
+- `failed::Vector{String}`: Names of packages that failed to register
+
+# Behavior
+1. Scans for all packages (main Project.toml and lib/*/Project.toml)
+2. Uses brute-force dependency resolution by repeatedly attempting registration
+3. Continues until all packages are registered or no more progress is possible
+4. Handles circular dependencies and complex dependency graphs
+5. Does NOT modify any Project.toml files or create commits
+
+# Examples
+```julia
+# Register all packages in a monorepo at current versions
+result = register_monorepo_packages("/path/to/repo")
+@info "Successfully registered: $(length(result.registered)) packages"
+
+# Register with custom registry
+register_monorepo_packages("/path/to/repo"; registry="MyRegistry", push=true)
+```
+
+# See Also
+- [`bump_and_register_repo`](@ref): For bumping versions before registration
+- [`register_package`](@ref): For registering a single package
 """
 function register_monorepo_packages(repo_path::String; registry = "General", push::Bool = false)
     if !isdir(repo_path)
@@ -344,7 +424,59 @@ end
                          auth_token::String="",
                          work_dir::String=mktempdir())
 
-Bump minor versions and register all packages in all repositories of a GitHub organization.
+Process all repositories in a GitHub organization: bump versions and register packages.
+
+This function automates the version bumping and registration process across an entire
+GitHub organization. It clones each repository, processes Julia packages found within,
+and handles both single-package repos and monorepos.
+
+# Arguments
+- `org::String`: GitHub organization name (e.g., "JuliaLang", "SciML")
+- `registry`: Name or path to the registry (default: "General")
+- `push::Bool`: Whether to push registrations to the remote registry (default: false)
+- `auth_token::String`: GitHub authentication token for API access (optional but recommended for rate limits)
+- `work_dir::String`: Directory for cloning repositories (default: temporary directory)
+
+# Returns
+A `Dict{String, Any}` mapping repository names to their results:
+- Each entry contains `registered` and `failed` arrays
+- May include an `error` field if repository processing failed
+
+# Behavior
+1. Fetches all repositories from the GitHub organization using the API
+2. Clones each repository (shallow clone for efficiency)
+3. Skips non-Julia repositories (no Project.toml)
+4. For each Julia repository:
+   - Bumps minor versions of all packages
+   - Registers packages in dependency order
+   - Commits and pushes changes to the repository
+5. Cleans up cloned repositories after processing
+
+# Examples
+```julia
+# Process all repos in an organization
+results = bump_and_register_org("MyOrg")
+for (repo, result) in results
+    println("$repo: registered $(length(result.registered)) packages")
+end
+
+# With authentication and custom registry
+results = bump_and_register_org("MyOrg"; 
+    auth_token=ENV["GITHUB_TOKEN"],
+    registry="MyRegistry",
+    push=true
+)
+```
+
+# Notes
+- Requires appropriate permissions to push to repositories
+- GitHub API rate limits apply (higher with authentication token)
+- Repositories are processed sequentially to avoid overwhelming the registry
+- Temporary clones are automatically cleaned up even if errors occur
+
+# See Also
+- [`bump_and_register_repo`](@ref): For processing a single repository
+- [`get_org_repos`](@ref): For fetching organization repository list
 """
 function bump_and_register_org(org::String;
         registry = "General",
