@@ -286,7 +286,7 @@ A NamedTuple with:
 ```julia
 # Register all packages in a monorepo at current versions
 result = register_monorepo_packages("/path/to/repo")
-@info "Successfully registered: $(length(result.registered)) packages"
+println("Successfully registered: ", length(result.registered), " packages")
 
 # Register with custom registry
 register_monorepo_packages("/path/to/repo"; registry="MyRegistry", push=true)
@@ -457,7 +457,7 @@ A `Dict{String, Any}` mapping repository names to their results:
 # Process all repos in an organization
 results = bump_and_register_org("MyOrg")
 for (repo, result) in results
-    println("$repo: registered $(length(result.registered)) packages")
+    println(repo, ": registered ", length(result.registered), " packages")
 end
 
 # With authentication and custom registry
