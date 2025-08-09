@@ -38,7 +38,7 @@ include("explicit_imports_fixer.jl")
 # Include documentation cleanup functionality
 include("documentation_cleanup.jl")
 
-export bump_and_register_repo, bump_and_register_org
+export bump_and_register_repo, bump_and_register_org, register_monorepo_packages
 export format_repository, format_org_repositories
 export update_manifests, update_project_tomls, update_project_versions_all
 export fix_package_min_versions, fix_repo_min_versions, fix_org_min_versions

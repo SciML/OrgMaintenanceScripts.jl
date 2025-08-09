@@ -57,6 +57,10 @@ result = bump_and_register_repo("/path/to/repo")
 println("Registered packages: ", result.registered)
 println("Failed packages: ", result.failed)
 
+# Register monorepo packages without bumping versions
+result = register_monorepo_packages("/path/to/monorepo")
+println("Successfully registered: ", length(result.registered), " packages")
+
 # Process all repositories in the SciML organization
 results = bump_and_register_org("SciML"; auth_token = "your_github_token")
 
