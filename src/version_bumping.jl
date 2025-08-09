@@ -8,7 +8,23 @@ using LocalRegistry
 """
     bump_minor_version(version_str::String) -> String
 
-Bump the minor version of a semantic version string.
+Bump the minor version of a semantic version string and reset patch to 0.
+
+# Arguments
+- `version_str::String`: A semantic version string in "MAJOR.MINOR.PATCH" format
+
+# Returns
+- `String`: The version string with minor incremented and patch reset to 0
+
+# Examples
+```julia
+bump_minor_version("1.2.3")  # Returns "1.3.0"
+bump_minor_version("0.1.0")  # Returns "0.2.0"
+bump_minor_version("2.10.5") # Returns "2.11.0"
+```
+
+# Errors
+- Throws `ErrorException` if version format is invalid (not three parts)
 """
 function bump_minor_version(version_str::String)
     parts = split(version_str, '.')
@@ -56,9 +72,37 @@ function update_project_versions_all(repo_path::String; include_subpackages::Boo
 end
 
 """
-    update_project_version(project_path::String)
+    update_project_version(project_path::String) -> Union{Tuple{String,String}, Nothing}
 
 Update the version in a Project.toml file by bumping the minor version.
+
+# Arguments
+- `project_path::String`: Path to the Project.toml file to update
+
+# Returns
+- `Tuple{String, String}`: (old_version, new_version) if successful
+- `nothing`: If file doesn't exist or has no version field
+
+# Behavior
+1. Reads the Project.toml file
+2. Extracts the current version
+3. Bumps the minor version (e.g., "1.2.3" → "1.3.0")
+4. Writes the updated Project.toml back to disk
+5. Logs the version change
+
+# Examples
+```julia
+result = update_project_version("path/to/Project.toml")
+if !isnothing(result)
+    old_ver, new_ver = result
+    println("Updated from v", old_ver, " to v", new_ver)
+end
+```
+
+# Notes
+- Preserves all other fields in Project.toml
+- Issues a warning if file not found or no version field exists
+- Atomic write operation (full file rewrite)
 """
 function update_project_version(project_path::String)
     if !isfile(project_path)
@@ -381,7 +425,37 @@ end
 """
     get_org_repos(org::String; auth_token::String="")
 
-Get all repositories for a GitHub organization.
+Fetch all repositories for a GitHub organization using the GitHub API.
+
+# Arguments
+- `org::String`: The GitHub organization name (e.g., "JuliaLang", "SciML")
+- `auth_token::String`: Optional GitHub personal access token for authentication
+  (increases rate limits from 60 to 5000 requests per hour)
+
+# Returns
+- `Vector{String}`: Full repository names in "org/repo" format
+
+# Behavior
+1. Uses GitHub API v3 to fetch repository list
+2. Handles pagination automatically (100 repos per page)
+3. Returns all public repositories (private repos require auth token with appropriate permissions)
+4. Continues fetching until all pages are retrieved
+5. Handles API errors gracefully and returns partial results if pagination fails
+
+# Examples
+```julia
+# Get all public repos for an organization
+repos = get_org_repos("JuliaLang")
+println("Found ", length(repos), " repositories")
+
+# With authentication for higher rate limits and private repos
+repos = get_org_repos("MyOrg"; auth_token=ENV["GITHUB_TOKEN"])
+```
+
+# Notes
+- Rate limits: 60 requests/hour unauthenticated, 5000/hour with token
+- Only returns repositories the token has access to
+- For large organizations, fetching may take several API calls due to pagination
 """
 function get_org_repos(org::String; auth_token::String = "")
     repos = String[]
