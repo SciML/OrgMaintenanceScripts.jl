@@ -185,12 +185,15 @@ function analyze_invalidations_in_process(repo_path::String, test_script::String
 end
 
 """
-    analyze_major_invalidators(invalidation_data::Dict)
+    analyze_major_invalidators(invalidation_data::AbstractDict)
 
 Analyze invalidation data to identify the major invalidators.
 Returns a list of the most problematic invalidations.
+
+The `invalidation_data` argument should be a Dict-like object (typically from JSON3.read)
+with an "invalidation_details" key containing a vector of invalidation entries.
 """
-function analyze_major_invalidators(invalidation_data::Dict)
+function analyze_major_invalidators(invalidation_data::AbstractDict)
     invalidations = invalidation_data["invalidation_details"]
 
     # Sort by children count (invalidations that trigger many others are worse)

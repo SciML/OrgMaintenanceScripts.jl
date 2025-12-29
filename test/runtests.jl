@@ -1,6 +1,7 @@
 using OrgMaintenanceScripts
 using Test
 using TOML
+using Dates
 
 @testset "OrgMaintenanceScripts.jl" begin
     @testset "Version bumping" begin
@@ -133,4 +134,7 @@ using TOML
     # Temporarily commented out due to syntax error in multiprocess_testing.jl
     # include("multiprocess_testing_tests.jl")
     include("documentation_cleanup_tests.jl")
+    # JET tests are available for manual static analysis but not included in CI
+    # To run JET analysis manually: julia --project=. -e 'using JET; include("test/jet_tests.jl")'
+    # include("jet_tests.jl")
 end

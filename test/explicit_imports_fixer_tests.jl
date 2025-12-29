@@ -1,6 +1,4 @@
-using OrgMaintenanceScripts
-using Test
-using TOML
+# Note: OrgMaintenanceScripts is already loaded by runtests.jl
 
 @testset "Explicit Imports Fixer" begin
     @testset "parse_explicit_imports_output" begin

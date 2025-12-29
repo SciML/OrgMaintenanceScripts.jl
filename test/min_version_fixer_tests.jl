@@ -1,6 +1,4 @@
-using Test
-using OrgMaintenanceScripts
-using TOML
+# Note: OrgMaintenanceScripts is already loaded by runtests.jl
 
 @testset "Minimum Version Fixer Tests" begin
     # Test helper functions
