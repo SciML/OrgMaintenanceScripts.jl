@@ -1,5 +1,4 @@
-using Test
-using OrgMaintenanceScripts
+# Note: OrgMaintenanceScripts is already loaded by runtests.jl
 using Pkg
 
 @testset "Formatting Functions" begin

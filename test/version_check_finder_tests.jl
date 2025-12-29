@@ -1,6 +1,4 @@
-using Test
-using OrgMaintenanceScripts
-using Dates
+# Note: OrgMaintenanceScripts is already loaded by runtests.jl
 
 @testset "Version Check Finder Tests" begin
     # Create temporary test files

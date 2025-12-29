@@ -43,6 +43,8 @@ function find_version_checks_in_file(filepath::String; min_version::VersionNumbe
                 m = match(pattern, line)
                 if !isnothing(m)
                     version_str = m.captures[1]
+                    # Skip if capture group didn't match (defensive check)
+                    isnothing(version_str) && continue
                     version = VersionNumber(version_str)
 
                     if version < min_version
