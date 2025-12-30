@@ -1,3 +1,5 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 OrgMaintenanceScripts = "87d49508-7ad8-40c6-ae47-b3ac92269cd4"
+[compat]
+Documenter = "1.16.1"
