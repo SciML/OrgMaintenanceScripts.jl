@@ -19,7 +19,8 @@ makedocs(;
         edit_link = "main",
         assets = ["assets/favicon.ico"]
     ),
-    pages = ["Home" => "index.md",
+    pages = [
+        "Home" => "index.md",
         "Formatting Maintenance" => "formatting.md",
         "Version Bumping" => "version_bumping.md",
         "Compat Bumping" => "compat_bumping.md",
@@ -29,7 +30,8 @@ makedocs(;
         "Import Timing Analysis" => "import_timing_analysis.md",
         "Explicit Imports Fixing" => "explicit_imports_fixing.md",
         "Documentation Cleanup" => "documentation_cleanup.md",
-        "Multiprocess Testing" => "multiprocess_testing.md"]
+        "Multiprocess Testing" => "multiprocess_testing.md",
+    ]
 )
 
 deploydocs(; repo = "github.com/SciML/OrgMaintenanceScripts.jl", devbranch = "main")

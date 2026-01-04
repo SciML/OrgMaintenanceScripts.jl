@@ -31,12 +31,14 @@
 
     @testset "update_compat!" begin
         # Test preserving upper bounds
-        project = Dict("compat" => Dict{String, Any}(
-            "PkgA" => "0.5, 1",
-            "PkgB" => "0.3-0.5",
-            "PkgC" => "^1.2",
-            "PkgD" => "0.8"
-        ))
+        project = Dict(
+            "compat" => Dict{String, Any}(
+                "PkgA" => "0.5, 1",
+                "PkgB" => "0.3-0.5",
+                "PkgC" => "^1.2",
+                "PkgD" => "0.8"
+            )
+        )
 
         updates = Dict(
             "PkgA" => "0.7",
@@ -79,10 +81,10 @@
 
         project_toml = Dict(
             "deps" => Dict(
-            "RecursiveArrayTools" => "731186ca-5190-57fd-a4c3-8b3e5a648489",
-            "StaticArrays" => "90137ffa-7385-5640-81b9-e52037218182",
-            "SomeOtherPkg" => "12345678-1234-1234-1234-123456789012"
-        )
+                "RecursiveArrayTools" => "731186ca-5190-57fd-a4c3-8b3e5a648489",
+                "StaticArrays" => "90137ffa-7385-5640-81b9-e52037218182",
+                "SomeOtherPkg" => "12345678-1234-1234-1234-123456789012"
+            )
         )
 
         problematic = OrgMaintenanceScripts.parse_resolution_errors(error_output, project_toml)

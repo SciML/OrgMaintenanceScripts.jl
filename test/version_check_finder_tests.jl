@@ -6,41 +6,45 @@
 
     # Test file with various version checks
     test_file1 = joinpath(test_dir, "test1.jl")
-    write(test_file1, """
-    # Some Julia code with version checks
+    write(
+        test_file1, """
+        # Some Julia code with version checks
 
-    if VERSION >= v"1.6"
-        println("This is old")
-    end
+        if VERSION >= v"1.6"
+            println("This is old")
+        end
 
-    @static if VERSION > v"1.8.0"
-        use_new_feature()
-    end
+        @static if VERSION > v"1.8.0"
+            use_new_feature()
+        end
 
-    if VERSION >= v"1.10"
-        # This should not be detected as obsolete
-        current_lts_feature()
-    end
+        if VERSION >= v"1.10"
+            # This should not be detected as obsolete
+            current_lts_feature()
+        end
 
-    VERSION <= v"1.9" && old_workaround()
+        VERSION <= v"1.9" && old_workaround()
 
-    if VERSION == v"1.7"
-        specific_version_hack()
-    end
+        if VERSION == v"1.7"
+            specific_version_hack()
+        end
 
-    if VERSION >= VersionNumber("1.5")
-        ancient_code()
-    end
-    """)
+        if VERSION >= VersionNumber("1.5")
+            ancient_code()
+        end
+        """
+    )
 
     # Test file without version checks
     test_file2 = joinpath(test_dir, "test2.jl")
-    write(test_file2, """
-    # Clean code without version checks
-    function foo()
-        return 42
-    end
-    """)
+    write(
+        test_file2, """
+        # Clean code without version checks
+        function foo()
+            return 42
+        end
+        """
+    )
 
     @testset "find_version_checks_in_file" begin
         # Test finding checks in file with version checks
@@ -105,7 +109,7 @@
                 "@static if VERSION > v\"1.8.0\"",
                 v"1.8.0",
                 "VERSION > v\"1.8.0\""
-            )
+            ),
         ]
 
         # Write to script
@@ -131,12 +135,12 @@
         org_results = Dict(
             "org/repo1" => [
                 OrgMaintenanceScripts.VersionCheck(
-                "src/main.jl",
-                15,
-                "VERSION >= v\"1.7\"",
-                v"1.7",
-                "VERSION >= v\"1.7\""
-            )
+                    "src/main.jl",
+                    15,
+                    "VERSION >= v\"1.7\"",
+                    v"1.7",
+                    "VERSION >= v\"1.7\""
+                ),
             ],
             "org/repo2" => [
                 OrgMaintenanceScripts.VersionCheck(
@@ -152,7 +156,7 @@
                     "VERSION == v\"1.8\"",
                     v"1.8",
                     "VERSION == v\"1.8\""
-                )
+                ),
             ]
         )
 

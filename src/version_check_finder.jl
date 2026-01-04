@@ -10,7 +10,7 @@ const VERSION_CHECK_PATTERNS = [
     r"^\s*elseif\s+VERSION\s*[><=]=?\s*v\"(\d+\.\d+(?:\.\d+)?)\""im,
     r"VERSION\s*[><=]=?\s*v\"(\d+\.\d+(?:\.\d+)?)\"\s*&&"i,
     r"VERSION\s*[><=]=?\s*v\"(\d+\.\d+(?:\.\d+)?)\"\s*\|\|"i,
-    r"VERSION\s*[><=]=?\s*VersionNumber\(\"(\d+\.\d+(?:\.\d+)?)\"\)"i
+    r"VERSION\s*[><=]=?\s*VersionNumber\(\"(\d+\.\d+(?:\.\d+)?)\"\)"i,
 ]
 
 const JULIA_LTS = v"1.10"
@@ -48,19 +48,21 @@ function find_version_checks_in_file(filepath::String; min_version::VersionNumbe
                     version = VersionNumber(version_str)
 
                     if version < min_version
-                        push!(checks, VersionCheck(
-                            filepath,
-                            line_num,
-                            line,
-                            version,
-                            m.match
-                        ))
+                        push!(
+                            checks, VersionCheck(
+                                filepath,
+                                line_num,
+                                line,
+                                version,
+                                m.match
+                            )
+                        )
                     end
                 end
             end
         end
     catch e
-        @error "Error reading file $filepath" exception=(e, catch_backtrace())
+        @error "Error reading file $filepath" exception = (e, catch_backtrace())
     end
 
     return checks
@@ -71,9 +73,11 @@ end
 
 Find all version checks in a repository that compare against versions older than min_version.
 """
-function find_version_checks_in_repo(repo_path::String;
+function find_version_checks_in_repo(
+        repo_path::String;
         min_version::VersionNumber = JULIA_LTS,
-        ignore_dirs = ["test", "docs", ".git"])
+        ignore_dirs = ["test", "docs", ".git"]
+    )
     if !isdir(repo_path)
         error("Repository path does not exist: $repo_path")
     end
@@ -105,11 +109,13 @@ end
 
 Find all version checks in all repositories of a GitHub organization.
 """
-function find_version_checks_in_org(org::String;
+function find_version_checks_in_org(
+        org::String;
         min_version::VersionNumber = JULIA_LTS,
         auth_token::String = "",
         work_dir::String = mktempdir(),
-        ignore_dirs = ["test", "docs", ".git"])
+        ignore_dirs = ["test", "docs", ".git"]
+    )
     results = Dict{String, Vector{VersionCheck}}()
 
     @info "Fetching repositories for organization: $org"
@@ -137,7 +143,7 @@ function find_version_checks_in_org(org::String;
             end
 
         catch e
-            @error "Failed to process $repo_name" exception=(e, catch_backtrace())
+            @error "Failed to process $repo_name" exception = (e, catch_backtrace())
         finally
             rm(repo_dir; force = true, recursive = true)
         end
@@ -152,7 +158,8 @@ end
 Write version check results to a Julia script file that can be executed to fix them.
 """
 function write_version_checks_to_script(
-        checks::Vector{VersionCheck}, output_file::String = "fix_version_checks.jl")
+        checks::Vector{VersionCheck}, output_file::String = "fix_version_checks.jl"
+    )
     open(output_file, "w") do io
         println(io, "#!/usr/bin/env julia")
         println(io, "# Auto-generated script to fix version checks")
@@ -197,7 +204,8 @@ Write organization-wide version check results to a script file.
 """
 function write_org_version_checks_to_script(
         org_results::Dict{String, Vector{VersionCheck}},
-        output_file::String = "fix_org_version_checks.jl")
+        output_file::String = "fix_org_version_checks.jl"
+    )
     total_checks = sum(length(checks) for checks in values(org_results))
 
     open(output_file, "w") do io
@@ -251,10 +259,12 @@ end
 Fix version checks in parallel using N processes. Each process will create a PR
 to fix the version checks by removing obsolete comparisons.
 """
-function fix_version_checks_parallel(checks::Vector{VersionCheck}, n_processes::Int = 4;
+function fix_version_checks_parallel(
+        checks::Vector{VersionCheck}, n_processes::Int = 4;
         github_token::String = "",
         base_branch::String = "main",
-        pr_title_prefix::String = "[Auto] Remove obsolete version checks")
+        pr_title_prefix::String = "[Auto] Remove obsolete version checks"
+    )
     if isempty(github_token)
         error("GitHub token is required for creating PRs")
     end
@@ -282,7 +292,8 @@ function fix_version_checks_parallel(checks::Vector{VersionCheck}, n_processes::
     # Define the worker function
     @everywhere function process_repo_fixes(
             repo_path::String, repo_checks::Vector{VersionCheck},
-            github_token::String, base_branch::String, pr_title_prefix::String)
+            github_token::String, base_branch::String, pr_title_prefix::String
+        )
         try
             # Create a temporary directory for Claude to work in
             work_dir = mktempdir()
@@ -352,7 +363,8 @@ function fix_version_checks_parallel(checks::Vector{VersionCheck}, n_processes::
     # Process repositories in parallel
     results = pmap(pairs(checks_by_repo)) do (repo_path, repo_checks)
         process_repo_fixes(
-            repo_path, repo_checks, github_token, base_branch, pr_title_prefix)
+            repo_path, repo_checks, github_token, base_branch, pr_title_prefix
+        )
     end
 
     # Summarize results
@@ -373,11 +385,13 @@ end
 
 Find and fix version checks across an entire GitHub organization using parallel processing.
 """
-function fix_org_version_checks_parallel(org::String, n_processes::Int = 4;
+function fix_org_version_checks_parallel(
+        org::String, n_processes::Int = 4;
         min_version::VersionNumber = JULIA_LTS,
         github_token::String = "",
         base_branch::String = "main",
-        work_dir::String = mktempdir())
+        work_dir::String = mktempdir()
+    )
 
     # First, find all version checks
     @info "Finding version checks in organization: $org"

@@ -6,56 +6,62 @@
 
     # Create Project.toml
     project_toml = joinpath(test_dir, "Project.toml")
-    write(project_toml, """
-    name = "TestInvalidationPackage"
-    uuid = "12345678-1234-1234-1234-123456789abc"
-    version = "0.1.0"
+    write(
+        project_toml, """
+        name = "TestInvalidationPackage"
+        uuid = "12345678-1234-1234-1234-123456789abc"
+        version = "0.1.0"
 
-    [deps]
-    """)
+        [deps]
+        """
+    )
 
     # Create src directory and main file
     src_dir = joinpath(test_dir, "src")
     mkpath(src_dir)
 
     main_file = joinpath(src_dir, "TestInvalidationPackage.jl")
-    write(main_file, """
-    module TestInvalidationPackage
+    write(
+        main_file, """
+        module TestInvalidationPackage
 
-    # Simple function that shouldn't cause invalidations
-    function simple_add(x::Int, y::Int)
-        return x + y
-    end
-
-    # Function with type instability (potential invalidation source)
-    function unstable_function(x)
-        if x > 0
-            return x
-        else
-            return "negative"
+        # Simple function that shouldn't cause invalidations
+        function simple_add(x::Int, y::Int)
+            return x + y
         end
-    end
 
-    export simple_add, unstable_function
+        # Function with type instability (potential invalidation source)
+        function unstable_function(x)
+            if x > 0
+                return x
+            else
+                return "negative"
+            end
+        end
 
-    end # module
-    """)
+        export simple_add, unstable_function
+
+        end # module
+        """
+    )
 
     # Create test directory and test file
     test_test_dir = joinpath(test_dir, "test")
     mkpath(test_test_dir)
 
     runtests_file = joinpath(test_test_dir, "runtests.jl")
-    write(runtests_file, """
-    using TestInvalidationPackage
-    using Test
+    write(
+        runtests_file, """
+        using TestInvalidationPackage
+        using Test
 
-    @testset "TestInvalidationPackage Tests" begin
-        @test simple_add(2, 3) == 5
-        @test unstable_function(1) == 1
-        @test unstable_function(-1) == "negative"
-    end
-    """)
+        @testset "TestInvalidationPackage Tests" begin
+            @test simple_add(2, 3) == 5
+            @test unstable_function(1) == 1
+            @test unstable_function(-1) == "negative"
+        end
+        """
+    )
 
     @testset "InvalidationEntry and InvalidationReport structures" begin
         # Test InvalidationEntry
@@ -124,12 +130,12 @@
                     "package" => "Package2",
                     "children_count" => 2,
                     "depth" => 0
-                )
+                ),
             ]
         )
 
         major_invalidators,
-        package_impact = OrgMaintenanceScripts.analyze_major_invalidators(mock_data)
+            package_impact = OrgMaintenanceScripts.analyze_major_invalidators(mock_data)
 
         @test length(major_invalidators) == 3
         @test major_invalidators[1].children_count == 8  # Should be sorted by impact

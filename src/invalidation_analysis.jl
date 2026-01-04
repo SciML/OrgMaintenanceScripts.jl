@@ -70,88 +70,89 @@ function analyze_invalidations_in_process(repo_path::String, test_script::String
 
     write(
         analysis_script, """
-      using SnoopCompileCore
-      import SnoopCompileCore: InferenceTimingNode, InfTiming
-      
-      # Change to repository directory
-      cd("$repo_path")
-      
-      println("Starting invalidation analysis for: $repo_path")
-      
-      # Start monitoring invalidations
-      invalidations = @snoopr begin
-          $test_code
-      end
-      
-      println("Captured \$(length(invalidations)) invalidations")
-      
-      # Analyze invalidation tree
-      trees = invalidation_trees(invalidations)
-      
-      # Extract detailed information about each invalidation
-      invalidation_data = []
-      
-      function extract_invalidation_info(node, depth=0)
-          for child in node.children
-              method_info = string(child.method)
-              
-              # Extract file and line information if available
-              file = "unknown"
-              line = 0
-              package = "unknown"
-              
-              try
-                  if hasfield(typeof(child.method), :file) && hasfield(typeof(child.method), :line)
-                      file = string(child.method.file)
-                      line = child.method.line
-                      
-                      # Try to determine package from file path
-                      if contains(file, ".julia/packages/")
-                          pkg_match = match(r"\\.julia/packages/([^/]+)", file)
-                          if pkg_match !== nothing
-                              package = pkg_match.captures[1]
-                          end
-                      elseif contains(file, "src/")
-                          # Local package
-                          package = "local"
-                      end
-                  end
-              catch e
-                  # Fallback if we can't extract file info
-              end
-              
-              children_count = length(child.children)
-              
-              push!(invalidation_data, Dict(
-                  "method" => method_info,
-                  "file" => file,
-                  "line" => line,
-                  "package" => package,
-                  "children_count" => children_count,
-                  "depth" => depth
-              ))
-              
-              # Recursively process children
-              extract_invalidation_info(child, depth + 1)
-          end
-      end
-      
-      for tree in trees
-          extract_invalidation_info(tree)
-      end
-      
-      # Save results as JSON
-      results = Dict(
-          "total_invalidations" => length(invalidations),
-          "tree_count" => length(trees),
-          "invalidation_details" => invalidation_data
-      )
-      
-      # Output JSON directly to stdout for the main process to capture
-      println("===JSON_START===")
-      JSON3.pretty(stdout, results)
-      println("\n===JSON_END===")
-  """)
+            using SnoopCompileCore
+            import SnoopCompileCore: InferenceTimingNode, InfTiming
+            
+            # Change to repository directory
+            cd("$repo_path")
+            
+            println("Starting invalidation analysis for: $repo_path")
+            
+            # Start monitoring invalidations
+            invalidations = @snoopr begin
+                $test_code
+            end
+            
+            println("Captured \$(length(invalidations)) invalidations")
+            
+            # Analyze invalidation tree
+            trees = invalidation_trees(invalidations)
+            
+            # Extract detailed information about each invalidation
+            invalidation_data = []
+            
+            function extract_invalidation_info(node, depth=0)
+                for child in node.children
+                    method_info = string(child.method)
+                    
+                    # Extract file and line information if available
+                    file = "unknown"
+                    line = 0
+                    package = "unknown"
+                    
+                    try
+                        if hasfield(typeof(child.method), :file) && hasfield(typeof(child.method), :line)
+                            file = string(child.method.file)
+                            line = child.method.line
+                            
+                            # Try to determine package from file path
+                            if contains(file, ".julia/packages/")
+                                pkg_match = match(r"\\.julia/packages/([^/]+)", file)
+                                if pkg_match !== nothing
+                                    package = pkg_match.captures[1]
+                                end
+                            elseif contains(file, "src/")
+                                # Local package
+                                package = "local"
+                            end
+                        end
+                    catch e
+                        # Fallback if we can't extract file info
+                    end
+                    
+                    children_count = length(child.children)
+                    
+                    push!(invalidation_data, Dict(
+                        "method" => method_info,
+                        "file" => file,
+                        "line" => line,
+                        "package" => package,
+                        "children_count" => children_count,
+                        "depth" => depth
+                    ))
+                    
+                    # Recursively process children
+                    extract_invalidation_info(child, depth + 1)
+                end
+            end
+            
+            for tree in trees
+                extract_invalidation_info(tree)
+            end
+            
+            # Save results as JSON
+            results = Dict(
+                "total_invalidations" => length(invalidations),
+                "tree_count" => length(trees),
+                "invalidation_details" => invalidation_data
+            )
+            
+            # Output JSON directly to stdout for the main process to capture
+            println("===JSON_START===")
+            JSON3.pretty(stdout, results)
+            println("\n===JSON_END===")
+        """
+    )
 
     # Run the analysis in a separate process
     try
@@ -218,13 +219,16 @@ function analyze_major_invalidators(invalidation_data::AbstractDict)
     end
 
     # Convert to vector and sort by impact
-    package_impact = [(pkg, stats["total_children"], stats["count"])
-                      for (pkg, stats) in package_stats]
+    package_impact = [
+        (pkg, stats["total_children"], stats["count"])
+            for (pkg, stats) in package_stats
+    ]
     sort!(package_impact, by = x -> x[2], rev = true)
 
     major_invalidators = []
     for inv in sorted_by_impact[1:min(20, end)]  # Top 20 invalidators
-        push!(major_invalidators,
+        push!(
+            major_invalidators,
             InvalidationEntry(
                 inv["method"],
                 inv["file"],
@@ -233,7 +237,8 @@ function analyze_major_invalidators(invalidation_data::AbstractDict)
                 "High-impact invalidation ($(inv["children_count"]) children)",
                 inv["children_count"],
                 inv["depth"]
-            ))
+            )
+        )
     end
 
     return major_invalidators, package_impact
@@ -279,28 +284,38 @@ function generate_invalidation_report(repo_path::String, test_script::String = "
             if length(package_impact) > 0
                 top_pkg, top_impact, top_count = package_impact[1]
                 if top_impact > 10
-                    push!(recommendations,
-                        "Focus on package '$top_pkg' - it causes $top_impact invalidations ($top_count instances)")
+                    push!(
+                        recommendations,
+                        "Focus on package '$top_pkg' - it causes $top_impact invalidations ($top_count instances)"
+                    )
                 end
             end
 
             # Type stability recommendations
             if any(inv -> inv.children_count > 5, major_invalidators)
-                push!(recommendations,
-                    "Consider improving type stability in methods with high invalidation counts")
+                push!(
+                    recommendations,
+                    "Consider improving type stability in methods with high invalidation counts"
+                )
             end
 
             # Dependency recommendations
             if length(packages_affected) > 5
-                push!(recommendations,
-                    "Review dependencies - $(length(packages_affected)) packages are involved in invalidations")
+                push!(
+                    recommendations,
+                    "Review dependencies - $(length(packages_affected)) packages are involved in invalidations"
+                )
             end
 
             # General recommendations
-            push!(recommendations,
-                "Run `@time_imports using YourPackage` to identify slow-loading dependencies")
-            push!(recommendations,
-                "Consider using `@nospecialize` for arguments that don't need to be specialized")
+            push!(
+                recommendations,
+                "Run `@time_imports using YourPackage` to identify slow-loading dependencies"
+            )
+            push!(
+                recommendations,
+                "Consider using `@nospecialize` for arguments that don't need to be specialized"
+            )
             push!(recommendations, "Profile with `@profile` to identify performance bottlenecks")
         else
             push!(recommendations, "Great job! No invalidations detected. Your package is well-optimized.")
@@ -317,8 +332,9 @@ function generate_invalidation_report(repo_path::String, test_script::String = "
         )
 
     catch e
-        @error "Failed to analyze invalidations for $repo_path" exception=(
-            e, catch_backtrace())
+        @error "Failed to analyze invalidations for $repo_path" exception = (
+            e, catch_backtrace(),
+        )
         return InvalidationReport(
             basename(repo_path),
             -1,  # Indicates error
@@ -387,12 +403,14 @@ end
 
 Analyze invalidations across all repositories in a GitHub organization.
 """
-function analyze_org_invalidations(org::String;
+function analyze_org_invalidations(
+        org::String;
         auth_token::String = "",
         work_dir::String = mktempdir(),
         test_script::String = "",
         output_dir::String = "",
-        max_repos::Int = 0)
+        max_repos::Int = 0
+    )
     @info "Analyzing invalidations for organization: $org"
 
     # Get all repositories
@@ -439,7 +457,7 @@ function analyze_org_invalidations(org::String;
             end
 
         catch e
-            @error "Failed to process $repo_name" exception=(e, catch_backtrace())
+            @error "Failed to process $repo_name" exception = (e, catch_backtrace())
             results[repo_name] = InvalidationReport(
                 repo_name,
                 -1,
@@ -474,18 +492,20 @@ function write_invalidation_report(report::InvalidationReport, output_file::Stri
         "summary" => report.summary,
         "packages_affected" => report.packages_affected,
         "recommendations" => report.recommendations,
-        "major_invalidators" => [Dict(
-                                     "method" => inv.method,
-                                     "file" => inv.file,
-                                     "line" => inv.line,
-                                     "package" => inv.package,
-                                     "reason" => inv.reason,
-                                     "children_count" => inv.children_count,
-                                     "depth" => inv.depth
-                                 ) for inv in report.major_invalidators]
+        "major_invalidators" => [
+            Dict(
+                    "method" => inv.method,
+                    "file" => inv.file,
+                    "line" => inv.line,
+                    "package" => inv.package,
+                    "reason" => inv.reason,
+                    "children_count" => inv.children_count,
+                    "depth" => inv.depth
+                ) for inv in report.major_invalidators
+        ]
     )
 
-    open(output_file, "w") do io
+    return open(output_file, "w") do io
         JSON3.pretty(io, report_data)
     end
 end
@@ -505,16 +525,21 @@ function generate_org_summary_report(org::String, results::Dict{String, Invalida
     successful_analyses = count(r -> r.total_invalidations >= 0, values(results))
     failed_analyses = total_repos - successful_analyses
 
-    total_invalidations = sum(r.total_invalidations
-    for r in values(results) if r.total_invalidations >= 0)
+    total_invalidations = sum(
+        r.total_invalidations
+            for r in values(results) if r.total_invalidations >= 0
+    )
     avg_invalidations = successful_analyses > 0 ?
-                        total_invalidations / successful_analyses : 0
+        total_invalidations / successful_analyses : 0
 
     # Find worst repositories
     worst_repos = sort(
-        [(name, report.total_invalidations)
-         for (name, report) in results if report.total_invalidations > 0],
-        by = x -> x[2], rev = true)
+        [
+            (name, report.total_invalidations)
+                for (name, report) in results if report.total_invalidations > 0
+        ],
+        by = x -> x[2], rev = true
+    )
 
     # Aggregate package problems
     all_packages = Set{String}()
@@ -536,7 +561,7 @@ function generate_org_summary_report(org::String, results::Dict{String, Invalida
         println(io, "- **Successful Analyses**: $successful_analyses")
         println(io, "- **Failed Analyses**: $failed_analyses")
         println(io, "- **Total Invalidations Found**: $total_invalidations")
-        println(io, "- **Average Invalidations per Repo**: $(round(avg_invalidations, digits=1))")
+        println(io, "- **Average Invalidations per Repo**: $(round(avg_invalidations, digits = 1))")
         println(io, "- **Unique Packages Involved**: $(length(all_packages))")
         println(io)
 
@@ -553,11 +578,15 @@ function generate_org_summary_report(org::String, results::Dict{String, Invalida
         if total_invalidations == 0
             println(io, "🎉 Excellent! No invalidations detected across the organization.")
         elseif avg_invalidations < 5
-            println(io,
-                "✅ Good performance overall. Focus on the worst repositories for further improvements.")
+            println(
+                io,
+                "✅ Good performance overall. Focus on the worst repositories for further improvements."
+            )
         elseif avg_invalidations < 20
-            println(io,
-                "⚠️ Moderate invalidation levels. Consider organization-wide performance initiatives.")
+            println(
+                io,
+                "⚠️ Moderate invalidation levels. Consider organization-wide performance initiatives."
+            )
         else
             println(io, "❌ High invalidation levels detected. Immediate attention recommended.")
         end

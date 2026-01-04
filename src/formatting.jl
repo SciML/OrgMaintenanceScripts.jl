@@ -34,7 +34,7 @@ function format_repository(
         create_pr::Bool = true,
         fork_user::String = "",
         working_dir::String = mktempdir()
-)
+    )
 
     # Validate inputs
     if create_pr && isempty(fork_user)
@@ -44,14 +44,14 @@ function format_repository(
             @info "Using GitHub username from gh CLI: $fork_user"
         catch
             error_msg = "fork_user must be provided when create_pr=true (or configure gh CLI)"
-            @error error_msg repo=repo_url
+            @error error_msg repo = repo_url
             return (false, error_msg, nothing)
         end
     end
 
     if push_to_master && create_pr
         error_msg = "Cannot both push_to_master and create_pr"
-        @error error_msg repo=repo_url
+        @error error_msg repo = repo_url
         return (false, error_msg, nothing)
     end
 
@@ -70,8 +70,11 @@ function format_repository(
 
         cd(repo_path) do
             # Get default branch
-            default_branch = strip(read(
-                `git symbolic-ref refs/remotes/origin/HEAD`, String))
+            default_branch = strip(
+                read(
+                    `git symbolic-ref refs/remotes/origin/HEAD`, String
+                )
+            )
             default_branch = split(default_branch, "/")[end]
 
             # Create branch if not pushing to master
@@ -98,7 +101,7 @@ function format_repository(
                 JuliaFormatter.format(".")
                 true
             catch e
-                @warn "Formatter encountered errors" exception=e
+                @warn "Formatter encountered errors" exception = e
                 false
             end
 
@@ -108,8 +111,10 @@ function format_repository(
 
             # If only change is the formatter config, no formatting was needed
             if isempty(changed_files) ||
-               (length(changed_files) == 1 && formatter_config_created &&
-                occursin(".JuliaFormatter.toml", changed_files[1]))
+                    (
+                    length(changed_files) == 1 && formatter_config_created &&
+                        occursin(".JuliaFormatter.toml", changed_files[1])
+                )
                 @info "No formatting changes needed"
                 return (true, "No formatting changes needed", nothing)
             end
@@ -126,7 +131,7 @@ function format_repository(
             stats = read(`git diff --cached --stat`, String)
             num_files_changed = count(c -> c == '\n', stats) - 1
 
-            @info "Formatting complete" files_changed=num_files_changed
+            @info "Formatting complete" files_changed = num_files_changed
 
             # Run tests if requested
             test_passed = true
@@ -167,7 +172,7 @@ function format_repository(
                 return (
                     true,
                     "Successfully pushed formatting changes to $default_branch",
-                    nothing
+                    nothing,
                 )
             elseif create_pr
                 @info "Creating pull request..."
@@ -222,7 +227,7 @@ function format_repository(
                     local_sha = strip(read(`git rev-parse HEAD`, String))
 
                     if !isempty(remote_sha) && remote_sha != local_sha
-                        @warn "Push may not have completed successfully" local_sha=local_sha remote_sha=remote_sha
+                        @warn "Push may not have completed successfully" local_sha = local_sha remote_sha = remote_sha
                     end
                 catch e
                     error_msg = "Failed to push to fork: $(sprint(showerror, e))"
@@ -237,7 +242,7 @@ function format_repository(
                 # Check for any uncommitted changes
                 uncommitted = read(`git status --porcelain`, String)
                 if !isempty(uncommitted)
-                    @warn "Uncommitted changes detected" changes=uncommitted
+                    @warn "Uncommitted changes detected" changes = uncommitted
                 end
 
                 # Create PR using gh CLI
@@ -263,14 +268,15 @@ function format_repository(
                 existing_pr = try
                     pr_list = read(
                         `gh pr list --repo $org/$repo --head $fork_user:fix-formatting --json url --jq '.[0].url'`,
-                        String)
+                        String
+                    )
                     strip(pr_list)
                 catch
                     ""
                 end
 
                 if !isempty(existing_pr)
-                    @info "Pull request already exists, will update it" pr=existing_pr
+                    @info "Pull request already exists, will update it" pr = existing_pr
                     rm("pr_body.txt"; force = true)
                     return (true, "Updated existing pull request", existing_pr)
                 end
@@ -291,9 +297,11 @@ function format_repository(
                         catch e
                             error_str = sprint(showerror, e)
                             if attempt < 3 &&
-                               (occursin("No commits between", error_str) ||
-                                occursin("Head sha can't be blank", error_str))
-                                @warn "GitHub hasn't processed the push yet, retrying..." attempt=attempt error=error_str
+                                    (
+                                    occursin("No commits between", error_str) ||
+                                        occursin("Head sha can't be blank", error_str)
+                                )
+                                @warn "GitHub hasn't processed the push yet, retrying..." attempt = attempt error = error_str
                                 sleep(5)  # Increased retry delay
                             else
                                 # Re-throw on last attempt or different error
@@ -319,14 +327,15 @@ function format_repository(
                         existing_pr = try
                             pr_list = read(
                                 `gh pr list --repo $org/$repo --head $fork_user:fix-formatting --json url --jq '.[0].url'`,
-                                String)
+                                String
+                            )
                             strip(pr_list)
                         catch
                             ""
                         end
 
                         if !isempty(existing_pr)
-                            @info "Pull request already exists (from error), updated it" pr=existing_pr
+                            @info "Pull request already exists (from error), updated it" pr = existing_pr
                             return (true, "Updated existing pull request", existing_pr)
                         end
                     end
@@ -364,7 +373,8 @@ function run_tests(repo_path::String; timeout_minutes::Int = 10)
         # Run tests with timeout
         test_cmd = `julia --project=. -e "using Pkg; Pkg.test()"`
         test_process = run(
-            pipeline(test_cmd; stdout = stdout, stderr = stderr); wait = false)
+            pipeline(test_cmd; stdout = stdout, stderr = stderr); wait = false
+        )
 
         # Wait for tests with timeout
         test_start = time()
@@ -387,7 +397,7 @@ function run_tests(repo_path::String; timeout_minutes::Int = 10)
             return false
         end
     catch e
-        @error "Error running tests" exception=e
+        @error "Error running tests" exception = e
         return false
     end
 end
@@ -428,7 +438,7 @@ function format_org_repositories(
         limit::Int = 100,
         only_failing_ci::Bool = true,
         log_file::String = ""
-)
+    )
 
     # Validate inputs early
     if create_pr && isempty(fork_user)
@@ -459,7 +469,7 @@ function format_org_repositories(
         )
     end
 
-    @info "Starting organization-wide formatting" org=org log_file=log_file
+    @info "Starting organization-wide formatting" org = org log_file = log_file
 
     # Get repositories
     @info "Fetching repositories from $org..."
@@ -488,13 +498,13 @@ function format_org_repositories(
         println(log_io)
 
         for (i, repo) in enumerate(repos)
-            @info "Processing repository" repo=repo progress="$i/$(length(repos))"
+            @info "Processing repository" repo = repo progress = "$i/$(length(repos))"
             println(log_io, "\n[$i/$(length(repos))] Processing $repo...")
 
             repo_url = "https://github.com/$org/$repo.git"
 
             success, message,
-            pr_url = format_repository(
+                pr_url = format_repository(
                 repo_url;
                 test = test,
                 push_to_master = push_to_master,
@@ -507,7 +517,7 @@ function format_org_repositories(
                 push!(successes, repo)
                 if pr_url !== nothing
                     push!(pr_urls, pr_url)
-                    @info "✓ SUCCESS: $repo - $message" pr=pr_url
+                    @info "✓ SUCCESS: $repo - $message" pr = pr_url
                     println(log_io, "✓ SUCCESS: $message")
                     println(log_io, "  PR: $pr_url")
                 else
@@ -545,9 +555,9 @@ function format_org_repositories(
 
     rm(working_dir; force = true, recursive = true)
 
-    @info "Organization formatting complete" successes=length(successes) failures=length(
+    @info "Organization formatting complete" successes = length(successes) failures = length(
         failures,
-    ) prs=length(pr_urls)
+    ) prs = length(pr_urls)
 
     return (successes, failures, pr_urls)
 end
@@ -564,7 +574,7 @@ function get_org_repositories(org::String, limit::Int = 100)
         repos = filter(!isempty, split(strip(output), '\n'))
         return String.(repos)  # Convert to Vector{String}
     catch e
-        @error "Failed to fetch repositories" exception=e
+        @error "Failed to fetch repositories" exception = e
         return String[]
     end
 end
@@ -588,9 +598,9 @@ function has_failing_formatter_ci(org::String, repo::String)
                 if !isempty(output)
                     # Check if any run on the target branch has failed
                     if occursin("\"headBranch\":\"$branch\"", output) && (
-                        occursin("\"conclusion\":\"failure\"", output) ||
-                        occursin("\"status\":\"failure\"", output)
-                    )
+                            occursin("\"conclusion\":\"failure\"", output) ||
+                                occursin("\"status\":\"failure\"", output)
+                        )
                         return true
                     end
                 end

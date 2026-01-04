@@ -159,7 +159,7 @@ function register_package(package_dir::String; registry = "General", push::Bool 
         if e isa ErrorException
             @error "Failed to register package at $package_dir: $(e.msg)"
         else
-            @error "Failed to register package at $package_dir" exception=(e, catch_backtrace())
+            @error "Failed to register package at $package_dir" exception = (e, catch_backtrace())
         end
         return false
     end
@@ -210,20 +210,20 @@ function bump_and_register_repo(repo_path::String; registry = "General", push::B
     # First, bump all versions
     @info "Bumping versions for all packages in $repo_path"
     version_updates = update_project_versions_all(repo_path)
-    
+
     if isempty(version_updates)
         @info "No packages found to update"
         return (registered = String[], failed = String[])
     end
-    
+
     # Collect all package directories
     package_dirs = String[]
-    
+
     # Main package
     if isfile(joinpath(repo_path, "Project.toml"))
         push!(package_dirs, repo_path)
     end
-    
+
     # Subpackages in lib/
     lib_dir = joinpath(repo_path, "lib")
     if isdir(lib_dir)
@@ -234,17 +234,17 @@ function bump_and_register_repo(repo_path::String; registry = "General", push::B
             end
         end
     end
-    
+
     # Register packages using brute-force dependency resolution
     registered = Set{String}()
-    
+
     while true
         one_succeed = false
-        
+
         for package_dir in package_dirs
             package_name = basename(package_dir)
             package_name in registered && continue
-            
+
             @info "Trying to register $package_name"
             # We need to register the packages in the correct order so we just brute force try
             # one by one until it succeeds
@@ -259,17 +259,17 @@ function bump_and_register_repo(repo_path::String; registry = "General", push::B
                     @debug "Could not register $package_name yet: $(e.msg)"
                 else
                     # Unexpected error - log but continue
-                    @error "Unexpected error registering $package_name" exception=(e, catch_backtrace())
+                    @error "Unexpected error registering $package_name" exception = (e, catch_backtrace())
                 end
             end
         end
-        
+
         if !one_succeed
             # No more packages can be registered
             break
         end
     end
-    
+
     # Identify failed packages
     failed_packages = String[]
     for package_dir in package_dirs
@@ -278,7 +278,7 @@ function bump_and_register_repo(repo_path::String; registry = "General", push::B
             push!(failed_packages, package_name)
         end
     end
-    
+
     if !isempty(failed_packages)
         @error "Could not register the following packages: $(join(failed_packages, ", "))"
     end
@@ -344,15 +344,15 @@ function register_monorepo_packages(repo_path::String; registry = "General", pus
     if !isdir(repo_path)
         error("Repository path does not exist: $repo_path")
     end
-    
+
     # Collect all package directories
     package_dirs = String[]
-    
+
     # Main package
     if isfile(joinpath(repo_path, "Project.toml"))
         push!(package_dirs, repo_path)
     end
-    
+
     # Subpackages in lib/
     lib_dir = joinpath(repo_path, "lib")
     if isdir(lib_dir)
@@ -363,24 +363,24 @@ function register_monorepo_packages(repo_path::String; registry = "General", pus
             end
         end
     end
-    
+
     if isempty(package_dirs)
         @info "No packages found to register"
         return (registered = String[], failed = String[])
     end
-    
+
     @info "Found $(length(package_dirs)) packages to register"
-    
+
     # Register packages using brute-force dependency resolution
     registered = Set{String}()
-    
+
     while true
         one_succeed = false
-        
+
         for package_dir in package_dirs
             package_name = basename(package_dir)
             package_name in registered && continue
-            
+
             @info "Trying to register $package_name"
             # We need to register the packages in the correct order so we just brute force try
             # one by one until it succeeds
@@ -395,17 +395,17 @@ function register_monorepo_packages(repo_path::String; registry = "General", pus
                     @debug "Could not register $package_name yet: $(e.msg)"
                 else
                     # Unexpected error - log but continue
-                    @error "Unexpected error registering $package_name" exception=(e, catch_backtrace())
+                    @error "Unexpected error registering $package_name" exception = (e, catch_backtrace())
                 end
             end
         end
-        
+
         if !one_succeed
             @info "Could not register any more packages"
             break
         end
     end
-    
+
     # Identify failed packages
     failed_packages = String[]
     for package_dir in package_dirs
@@ -414,11 +414,11 @@ function register_monorepo_packages(repo_path::String; registry = "General", pus
             push!(failed_packages, package_name)
         end
     end
-    
+
     if !isempty(failed_packages)
         @error "Could not register the following packages: $(join(failed_packages, ", "))"
     end
-    
+
     return (registered = collect(registered), failed = failed_packages)
 end
 
@@ -483,7 +483,7 @@ function get_org_repos(org::String; auth_token::String = "")
 
             page += 1
         catch e
-            @error "Failed to fetch repos" page exception=(e, catch_backtrace())
+            @error "Failed to fetch repos" page exception = (e, catch_backtrace())
             break
         end
     end
@@ -552,11 +552,13 @@ results = bump_and_register_org("MyOrg";
 - [`bump_and_register_repo`](@ref): For processing a single repository
 - [`get_org_repos`](@ref): For fetching organization repository list
 """
-function bump_and_register_org(org::String;
+function bump_and_register_org(
+        org::String;
         registry = "General",
         push::Bool = false,
         auth_token::String = "",
-        work_dir::String = mktempdir())
+        work_dir::String = mktempdir()
+    )
     @info "Fetching repositories for organization: $org"
     repos = get_org_repos(org; auth_token)
 
@@ -597,9 +599,10 @@ function bump_and_register_org(org::String;
             end
 
         catch e
-            @error "Failed to process $repo_name" exception=(e, catch_backtrace())
+            @error "Failed to process $repo_name" exception = (e, catch_backtrace())
             results[repo_name] = (
-                registered = String[], failed = String[], error = string(e))
+                registered = String[], failed = String[], error = string(e),
+            )
         finally
             # Clean up
             rm(repo_dir; force = true, recursive = true)
@@ -611,9 +614,9 @@ end
 
 # Keep the placeholder functions for backward compatibility
 function update_manifests()
-    @warn "update_manifests is deprecated. Use bump_and_register_repo or bump_and_register_org instead."
+    return @warn "update_manifests is deprecated. Use bump_and_register_repo or bump_and_register_org instead."
 end
 
 function update_project_tomls()
-    @warn "update_project_tomls is deprecated. Use bump_and_register_repo or bump_and_register_org instead."
+    return @warn "update_project_tomls is deprecated. Use bump_and_register_repo or bump_and_register_org instead."
 end
