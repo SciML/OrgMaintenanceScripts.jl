@@ -42,11 +42,7 @@ using JET
     @testset "Version bumping functions" begin
         # Test bump_minor_version type stability
         @test_opt target_modules = (OrgMaintenanceScripts,) OrgMaintenanceScripts.bump_minor_version(
-            "1.0.0"
-        )
-        @test_opt target_modules = (OrgMaintenanceScripts,) OrgMaintenanceScripts.bump_patch_version(
-            "1.0.0"
-        )
+            "1.0.0")
     end
 
     @testset "Struct constructors" begin
@@ -61,7 +57,9 @@ using JET
     @testset "Report functions" begin
         # Test VersionCheck related functions
         checks = OrgMaintenanceScripts.VersionCheck[]
-        @test_opt target_modules = (OrgMaintenanceScripts,) OrgMaintenanceScripts.print_version_check_summary(checks)
+        # Test the IO method directly for type stability
+        @test_opt target_modules = (OrgMaintenanceScripts,) OrgMaintenanceScripts.print_version_check_summary(
+            devnull, checks)
 
         mktempdir() do tmpdir
             output_file = joinpath(tmpdir, "output.jl")

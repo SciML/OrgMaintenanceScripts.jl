@@ -24,6 +24,48 @@ struct VersionCheck
 end
 
 """
+    print_version_check_summary(checks::Vector{VersionCheck})
+    print_version_check_summary(io::IO, checks::Vector{VersionCheck})
+
+Print a summary of version checks to the specified IO stream (defaults to stdout).
+"""
+function print_version_check_summary(io::IO, checks::Vector{VersionCheck})
+    if isempty(checks)
+        println(io, "No obsolete version checks found.")
+        return nothing
+    end
+
+    println(io, "\n" * "="^60)
+    println(io, "VERSION CHECK SUMMARY")
+    println(io, "="^60)
+    println(io, "Total obsolete version checks found: $(length(checks))")
+    println(io)
+
+    # Group by file
+    files = Dict{String, Vector{VersionCheck}}()
+    for check in checks
+        if !haskey(files, check.file)
+            files[check.file] = VersionCheck[]
+        end
+        push!(files[check.file], check)
+    end
+
+    println(io, "Checks by file ($(length(files)) files):")
+    for (file, file_checks) in sort(collect(files), by = x -> x[1])
+        println(io, "\n  $file:")
+        for check in sort(file_checks, by = x -> x.line_number)
+            println(io, "    Line $(check.line_number): version v$(check.version)")
+            println(io, "      $(strip(check.line_content))")
+        end
+    end
+
+    println(io, "\n" * "="^60)
+    return nothing
+end
+
+print_version_check_summary(checks::Vector{VersionCheck}) = print_version_check_summary(stdout, checks)
+
+"""
     find_version_checks_in_file(filepath::String; min_version::VersionNumber=JULIA_LTS)
 
 Find all version checks in a single file that compare against versions older than min_version.
