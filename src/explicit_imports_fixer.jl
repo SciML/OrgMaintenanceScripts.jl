@@ -58,7 +58,7 @@ function run_explicit_imports_check(package_path::String; verbose = true)
     pkg_name = project_toml["name"]
 
     # Create a temporary environment to load and check the package
-    mktempdir() do tmpdir
+    return mktempdir() do tmpdir
         # Copy the package to temp directory to avoid modifying the original during checks
         test_path = joinpath(tmpdir, "test_package")
         cp(package_path, test_path)
@@ -98,17 +98,19 @@ function run_explicit_imports_check(package_path::String; verbose = true)
 
                     # Parse issues from the result
                     if hasproperty(missing_result, :errors) &&
-                       !isempty(missing_result.errors)
+                            !isempty(missing_result.errors)
                         for error in missing_result.errors
                             # Extract module and symbol information
                             if hasproperty(error, :name) && hasproperty(error, :source)
-                                push!(all_issues,
+                                push!(
+                                    all_issues,
                                     (
                                         type = :missing_import,
                                         module_name = string(error.source),
                                         symbol = string(error.name),
-                                        line = "$(error.source).$(error.name) is not explicitly imported"
-                                    ))
+                                        line = "$(error.source).$(error.name) is not explicitly imported",
+                                    )
+                                )
                             end
                         end
                     end
@@ -130,12 +132,14 @@ function run_explicit_imports_check(package_path::String; verbose = true)
                     if hasproperty(stale_result, :errors) && !isempty(stale_result.errors)
                         for error in stale_result.errors
                             if hasproperty(error, :name)
-                                push!(all_issues,
+                                push!(
+                                    all_issues,
                                     (
                                         type = :unused_import,
                                         symbol = string(error.name),
-                                        line = "$(error.name) is explicitly imported but not used"
-                                    ))
+                                        line = "$(error.name) is explicitly imported but not used",
+                                    )
+                                )
                             end
                         end
                     end
@@ -213,36 +217,42 @@ function parse_explicit_imports_output(output::String)
 
         # Parse issues based on section
         if current_section == "missing_imports" &&
-           occursin("is not explicitly imported", line)
+                occursin("is not explicitly imported", line)
             # Extract: "SomeModule.function is not explicitly imported"
             m = match(r"(\w+)\.(\w+) is not explicitly imported", line)
             if m !== nothing
-                push!(issues,
+                push!(
+                    issues,
                     (
                         type = :missing_import,
                         module_name = m.captures[1],
                         symbol = m.captures[2],
-                        line = line
-                    ))
+                        line = line,
+                    )
+                )
             end
         elseif current_section == "unnecessary_imports" &&
-               occursin("is explicitly imported but not used", line)
+                occursin("is explicitly imported but not used", line)
             # Extract: "function is explicitly imported but not used"
             m = match(r"(\w+) is explicitly imported but not used", line)
             if m !== nothing
-                push!(issues, (
-                    type = :unused_import,
-                    symbol = m.captures[1],
-                    line = line
-                ))
+                push!(
+                    issues, (
+                        type = :unused_import,
+                        symbol = m.captures[1],
+                        line = line,
+                    )
+                )
             end
         elseif occursin("FAIL", line) || occursin("WARN", line)
             # Generic issue detection
-            push!(issues, (
-                type = :generic,
-                section = current_section,
-                line = line
-            ))
+            push!(
+                issues, (
+                    type = :generic,
+                    section = current_section,
+                    line = line,
+                )
+            )
         end
     end
 
@@ -341,8 +351,10 @@ function fix_unused_import(file_path::String, symbol::String)
                     continue
                 else
                     # Reconstruct the line
-                    push!(modified_lines, "$(indent)$(keyword) $(module_name): " *
-                                          join(filtered, ", "))
+                    push!(
+                        modified_lines, "$(indent)$(keyword) $(module_name): " *
+                            join(filtered, ", ")
+                    )
                 end
                 # Handle "import Module.symbol" format
             elseif occursin(Regex("^\\s*import\\s+\\w+\\.$(escaped_symbol)\\s*\$"), line)
@@ -487,11 +499,13 @@ end
 
 Clone a repository, fix its explicit imports, and optionally create a PR.
 """
-function fix_repo_explicit_imports(repo_name::String;
+function fix_repo_explicit_imports(
+        repo_name::String;
         work_dir::String = mktempdir(),
         max_iterations::Int = 10,
         create_pr::Bool = true,
-        verbose::Bool = true)
+        verbose::Bool = true
+    )
 
     # Clone repository
     repo_dir = joinpath(work_dir, replace(repo_name, "/" => "_"))
@@ -514,7 +528,7 @@ function fix_repo_explicit_imports(repo_name::String;
 
     # Fix explicit imports
     success, iterations,
-    final_report = fix_explicit_imports(repo_dir; max_iterations, verbose)
+        final_report = fix_explicit_imports(repo_dir; max_iterations, verbose)
 
     if !success
         @warn "Could not fully fix explicit imports for $repo_name"
@@ -610,13 +624,15 @@ end
 
 Fix explicit imports for all Julia packages in a GitHub organization.
 """
-function fix_org_explicit_imports(org_name::String;
+function fix_org_explicit_imports(
+        org_name::String;
         work_dir::String = mktempdir(),
         max_iterations::Int = 10,
         create_prs::Bool = true,
         skip_repos::Vector{String} = String[],
         only_repos::Union{Nothing, Vector{String}} = nothing,
-        verbose::Bool = true)
+        verbose::Bool = true
+    )
     @info "Fetching repositories for organization: $org_name"
 
     # Get repositories
@@ -649,11 +665,13 @@ function fix_org_explicit_imports(org_name::String;
         @info "="^60
 
         try
-            success = fix_repo_explicit_imports(repo;
+            success = fix_repo_explicit_imports(
+                repo;
                 work_dir,
                 max_iterations,
                 create_pr = create_prs,
-                verbose)
+                verbose
+            )
             results[repo] = success
         catch e
             @error "Failed to process $repo: $e"

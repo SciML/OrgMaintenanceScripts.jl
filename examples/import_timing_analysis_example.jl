@@ -16,14 +16,14 @@ try
 
     println("Analysis completed for: $(report.repo)")
     println("Package: $(report.package_name)")
-    println("Total import time: $(round(report.total_import_time, digits=2)) seconds")
+    println("Total import time: $(round(report.total_import_time, digits = 2)) seconds")
     println("Summary: $(report.summary)")
 
     if !isempty(report.major_contributors)
         println("\nTop import contributors:")
         for (i, timing) in enumerate(report.major_contributors[1:min(5, end)])
             local_marker = timing.is_local ? " (LOCAL)" : ""
-            println("  $i. $(timing.package_name)$local_marker - $(round(timing.total_time, digits=2))s")
+            println("  $i. $(timing.package_name)$local_marker - $(round(timing.total_time, digits = 2))s")
         end
     end
 
@@ -64,26 +64,28 @@ println("- raw_output: Raw @time_imports output for debugging")
 # Example 3: Organization analysis (demonstration only)
 println("\n=== Example 3: Organization Analysis (Demo) ===")
 println("To analyze an entire organization:")
-println("""
-    # Set up authentication
-    github_token = ENV["GITHUB_TOKEN"]
-    
-    # Analyze a small organization or subset
-    results = analyze_org_import_timing("MyOrg", 
-        auth_token=github_token,
-        output_dir="import_timing_reports",
-        max_repos=5  # Limit for testing
-    )
-    
-    # Find slowest packages
-    slowest = sort([(name, r.total_import_time) for (name, r) in results], 
-                   by=x->x[2], rev=true)
-    
-    println("Slowest packages:")
-    for (name, time) in slowest[1:5]
-        println("\$name: \$(round(time, digits=2))s")
-    end
-""")
+println(
+    """
+        # Set up authentication
+        github_token = ENV["GITHUB_TOKEN"]
+        
+        # Analyze a small organization or subset
+        results = analyze_org_import_timing("MyOrg", 
+            auth_token=github_token,
+            output_dir="import_timing_reports",
+            max_repos=5  # Limit for testing
+        )
+        
+        # Find slowest packages
+        slowest = sort([(name, r.total_import_time) for (name, r) in results], 
+                       by=x->x[2], rev=true)
+        
+        println("Slowest packages:")
+        for (name, time) in slowest[1:5]
+            println("\$name: \$(round(time, digits=2))s")
+        end
+    """
+)
 
 # Example 4: Interpreting results and optimization strategies
 println("\n=== Example 4: Import Time Optimization Strategies ===")

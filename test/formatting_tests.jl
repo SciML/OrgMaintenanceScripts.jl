@@ -6,7 +6,7 @@ using Pkg
         # Test with missing fork_user when create_pr=true
         # Now it tries to auto-detect from gh CLI
         success, message,
-        pr_url = format_repository(
+            pr_url = format_repository(
             "https://github.com/test/test.jl.git";
             create_pr = true,
             fork_user = ""
@@ -18,11 +18,11 @@ using Pkg
         @test pr_url === nothing
         # Check for either error message
         @test occursin("fork_user must be provided when create_pr=true (or configure gh CLI)", message) ||
-              occursin("Error:", message)
+            occursin("Error:", message)
 
         # Test with both push_to_master and create_pr
         success, message,
-        pr_url = format_repository(
+            pr_url = format_repository(
             "https://github.com/test/test.jl.git";
             push_to_master = true,
             create_pr = true,

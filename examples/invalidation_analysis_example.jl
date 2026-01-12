@@ -55,22 +55,24 @@ println(custom_test_script)
 # Example 3: Organization analysis (demonstration only)
 println("\n=== Example 3: Organization Analysis (Demo) ===")
 println("To analyze an entire organization:")
-println("""
-    # Set up authentication
-    github_token = ENV["GITHUB_TOKEN"]
-    
-    # Analyze a small organization or subset
-    results = analyze_org_invalidations("MyOrg", 
-        auth_token=github_token,
-        output_dir="invalidation_reports",
-        max_repos=5  # Limit for testing
-    )
-    
-    # Print summary
-    for (repo, report) in results
-        println("\$repo: \$(report.total_invalidations) invalidations")
-    end
-""")
+println(
+    """
+        # Set up authentication
+        github_token = ENV["GITHUB_TOKEN"]
+        
+        # Analyze a small organization or subset
+        results = analyze_org_invalidations("MyOrg", 
+            auth_token=github_token,
+            output_dir="invalidation_reports",
+            max_repos=5  # Limit for testing
+        )
+        
+        # Print summary
+        for (repo, report) in results
+            println("\$repo: \$(report.total_invalidations) invalidations")
+        end
+    """
+)
 
 # Example 4: Understanding the report structure
 println("\n=== Example 4: Report Structure ===")

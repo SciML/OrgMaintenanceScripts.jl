@@ -6,43 +6,47 @@
 
     # Create Project.toml
     project_toml = joinpath(test_dir, "Project.toml")
-    write(project_toml, """
-    name = "TestImportTimingPackage"
-    uuid = "12345678-1234-1234-1234-123456789def"
-    version = "0.1.0"
+    write(
+        project_toml, """
+        name = "TestImportTimingPackage"
+        uuid = "12345678-1234-1234-1234-123456789def"
+        version = "0.1.0"
 
-    [deps]
-    Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
-    """)
+        [deps]
+        Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+        """
+    )
 
     # Create src directory and main file
     src_dir = joinpath(test_dir, "src")
     mkpath(src_dir)
 
     main_file = joinpath(src_dir, "TestImportTimingPackage.jl")
-    write(main_file, """
-    module TestImportTimingPackage
+    write(
+        main_file, """
+        module TestImportTimingPackage
 
-    using Dates
+        using Dates
 
-    # Simple function
-    function get_current_time()
-        return now()
-    end
-
-    # Function that might take some time to compile
-    function complex_computation(x::T) where T
-        result = zero(T)
-        for i in 1:100
-            result += sin(x * i) + cos(x * i)
+        # Simple function
+        function get_current_time()
+            return now()
         end
-        return result
-    end
 
-    export get_current_time, complex_computation
+        # Function that might take some time to compile
+        function complex_computation(x::T) where T
+            result = zero(T)
+            for i in 1:100
+                result += sin(x * i) + cos(x * i)
+            end
+            return result
+        end
 
-    end # module
-    """)
+        export get_current_time, complex_computation
+
+        end # module
+        """
+    )
 
     @testset "ImportTiming and ImportTimingReport structures" begin
         # Test ImportTiming
@@ -114,7 +118,7 @@
                     "is_precompile" => true,
                     "is_local" => true,
                     "line" => "  200.0 ms  TestPackage"
-                )
+                ),
             ],
             "raw_output" => "Mock @time_imports output",
             "total_entries" => 3

@@ -46,8 +46,10 @@ Downgrade all dependencies to their minimum compatible versions using Resolver.j
 This uses the same approach as julia-actions/julia-downgrade-compat.
 Returns (success::Bool, output::String)
 """
-function downgrade_to_minimum_versions(project_dir::String; julia_version = "1.10",
-        mode = "alldeps", work_dir = mktempdir())
+function downgrade_to_minimum_versions(
+        project_dir::String; julia_version = "1.10",
+        mode = "alldeps", work_dir = mktempdir()
+    )
     project_file = joinpath(project_dir, "Project.toml")
     if !isfile(project_file)
         # Also check for JuliaProject.toml
@@ -96,11 +98,12 @@ Test if minimum versions can be resolved using Resolver.jl.
 Returns (success::Bool, error_output::String)
 """
 function test_min_versions(
-        project_dir::String; julia_version = "1.10", mode = "alldeps", work_dir = mktempdir())
+        project_dir::String; julia_version = "1.10", mode = "alldeps", work_dir = mktempdir()
+    )
     @info "Testing minimum versions for $project_dir with Julia $julia_version and mode $mode"
 
     success,
-    output = downgrade_to_minimum_versions(project_dir; julia_version, mode, work_dir)
+        output = downgrade_to_minimum_versions(project_dir; julia_version, mode, work_dir)
 
     if success
         @info "✓ Successfully resolved minimum versions"
@@ -130,7 +133,7 @@ function parse_resolution_errors(output::String, project_toml::Dict)
         r"restricted by compatibility requirements with (\w+)",
         r"package (\w+) has no versions",
         r"Cannot resolve package (\w+)",
-        r"Unsatisfiable requirements for (\w+)"
+        r"Unsatisfiable requirements for (\w+)",
     ]
 
     # Look for specific error patterns
@@ -147,7 +150,7 @@ function parse_resolution_errors(output::String, project_toml::Dict)
     # Also look for simple package mentions in error lines
     for line in split(output, '\n')
         if occursin("ERROR", line) || occursin("WARN", line) ||
-           occursin("unsatisfiable", lowercase(line))
+                occursin("unsatisfiable", lowercase(line))
             for (pkg_name, _) in deps
                 if occursin(pkg_name, line)
                     @info "Found problematic package in error line: $pkg_name"
@@ -203,7 +206,7 @@ function is_outdated_compat(compat_str::String, pkg_name::String)
     if min_version.major < latest_version.major
         return true  # Major version behind
     elseif min_version.major == latest_version.major &&
-           min_version.minor < latest_version.minor
+            min_version.minor < latest_version.minor
         # For 0.x packages, being behind on minor is significant
         if min_version.major == 0
             return true
@@ -401,6 +404,7 @@ function update_compat!(project_toml::Dict, updates::Dict{String, String})
 
         @info "Updated $pkg: $current → $(compat[pkg])"
     end
+    return
 end
 
 """
@@ -414,11 +418,13 @@ Fix minimum versions for all Project.toml files in a repository.
 Supports repositories with subpackages in the /lib directory.
 Returns (success::Bool, all_updates::Dict{String,Dict{String,String}})
 """
-function fix_package_min_versions_all(repo_path::String;
+function fix_package_min_versions_all(
+        repo_path::String;
         max_iterations::Int = 10,
         work_dir::String = mktempdir(),
         julia_version::String = "1.10",
-        include_subpackages::Bool = true)
+        include_subpackages::Bool = true
+    )
 
     # Find all Project.toml files
     project_files = find_all_project_tomls(repo_path)
@@ -444,10 +450,12 @@ function fix_package_min_versions_all(repo_path::String;
 
         # Fix minimum versions for this project
         success,
-        updates = fix_package_min_versions(project_dir;
+            updates = fix_package_min_versions(
+            project_dir;
             max_iterations,
             work_dir,
-            julia_version)
+            julia_version
+        )
 
         if !isempty(updates)
             all_updates[rel_path] = updates
@@ -470,10 +478,12 @@ end
 Fix minimum versions for a package repository that's already cloned.
 Returns (success::Bool, updates::Dict{String,String})
 """
-function fix_package_min_versions(repo_path::String;
+function fix_package_min_versions(
+        repo_path::String;
         max_iterations::Int = 10,
         work_dir::String = mktempdir(),
-        julia_version::String = "1.10")
+        julia_version::String = "1.10"
+    )
     project_file = joinpath(repo_path, "Project.toml")
 
     if !isfile(project_file)
@@ -562,12 +572,14 @@ end
 Clone a repository, fix its minimum versions, and optionally create a PR.
 Now supports repositories with subpackages in /lib directories.
 """
-function fix_repo_min_versions(repo_name::String;
+function fix_repo_min_versions(
+        repo_name::String;
         work_dir::String = mktempdir(),
         max_iterations::Int = 10,
         create_pr::Bool = true,
         julia_version::String = "1.10",
-        include_subpackages::Bool = true)
+        include_subpackages::Bool = true
+    )
 
     # Clone repository
     repo_dir = joinpath(work_dir, replace(repo_name, "/" => "_"))
@@ -596,11 +608,13 @@ function fix_repo_min_versions(repo_name::String;
     if use_multi
         # Fix minimum versions for all projects
         success,
-        all_updates = fix_package_min_versions_all(repo_dir;
+            all_updates = fix_package_min_versions_all(
+            repo_dir;
             max_iterations,
             work_dir,
             julia_version,
-            include_subpackages)
+            include_subpackages
+        )
 
         if !success || isempty(all_updates)
             @info "No changes needed for $repo_name"
@@ -637,10 +651,12 @@ function fix_repo_min_versions(repo_name::String;
     else
         # Fix minimum versions for single project
         success,
-        updates = fix_package_min_versions(repo_dir;
+            updates = fix_package_min_versions(
+            repo_dir;
             max_iterations,
             work_dir,
-            julia_version)
+            julia_version
+        )
 
         if !success || isempty(updates)
             @info "No changes needed for $repo_name"
@@ -769,14 +785,16 @@ end
 Fix minimum versions for all Julia packages in a GitHub organization.
 Now supports repositories with subpackages in /lib directories.
 """
-function fix_org_min_versions(org_name::String;
+function fix_org_min_versions(
+        org_name::String;
         work_dir::String = mktempdir(),
         max_iterations::Int = 10,
         create_prs::Bool = true,
         skip_repos::Vector{String} = String[],
         only_repos::Union{Nothing, Vector{String}} = nothing,
         julia_version::String = "1.10",
-        include_subpackages::Bool = true)
+        include_subpackages::Bool = true
+    )
     @info "Fetching repositories for organization: $org_name"
 
     # Get repositories
@@ -791,10 +809,14 @@ function fix_org_min_versions(org_name::String;
         repos = String[]
         for repo in repos_data
             if !repo.isArchived &&
-               (endswith(repo.name, ".jl") ||
-                (haskey(repo, :description) &&
-                 repo.description !== nothing &&
-                 occursin("julia", lowercase(repo.description))))
+                    (
+                    endswith(repo.name, ".jl") ||
+                        (
+                        haskey(repo, :description) &&
+                            repo.description !== nothing &&
+                            occursin("julia", lowercase(repo.description))
+                    )
+                )
                 push!(repos, "$org_name/$(repo.name)")
             end
         end
@@ -813,12 +835,14 @@ function fix_org_min_versions(org_name::String;
         @info "="^60
 
         try
-            success = fix_repo_min_versions(repo;
+            success = fix_repo_min_versions(
+                repo;
                 work_dir,
                 max_iterations,
                 create_pr = create_prs,
                 julia_version,
-                include_subpackages)
+                include_subpackages
+            )
             results[repo] = success
         catch e
             @error "Failed to process $repo: $e"

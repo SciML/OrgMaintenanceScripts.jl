@@ -36,16 +36,18 @@ end
 # Example 4: Demonstrate parallel fixing (dry run)
 println("\n=== Example 4: Parallel fixing demonstration ===")
 println("To fix version checks in parallel across an organization:")
-println("""
-    # Set your GitHub token
-    github_token = ENV["GITHUB_TOKEN"]
-    
-    # Fix all obsolete version checks in the SciML organization
-    results = fix_org_version_checks_parallel("SciML", 4; 
-        github_token=github_token,
-        min_version=v"1.10"
-    )
-""")
+println(
+    """
+        # Set your GitHub token
+        github_token = ENV["GITHUB_TOKEN"]
+        
+        # Fix all obsolete version checks in the SciML organization
+        results = fix_org_version_checks_parallel("SciML", 4; 
+            github_token=github_token,
+            min_version=v"1.10"
+        )
+    """
+)
 
 println("\nNote: The parallel fixing will create PRs to remove obsolete version checks.")
 println("Each PR will be handled by Claude to ensure proper code changes.")

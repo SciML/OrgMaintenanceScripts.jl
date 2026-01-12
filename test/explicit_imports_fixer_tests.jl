@@ -27,15 +27,17 @@
         mktempdir() do tmpdir
             # Create a test file
             test_file = joinpath(tmpdir, "test.jl")
-            write(test_file, """
-            module TestModule
+            write(
+                test_file, """
+                module TestModule
 
-            function test_func()
-                println("Hello")
-            end
+                function test_func()
+                    println("Hello")
+                end
 
-            end
-            """)
+                end
+                """
+            )
 
             # Fix missing import
             success = OrgMaintenanceScripts.fix_missing_import(test_file, "Base", "println")
@@ -51,19 +53,21 @@
         mktempdir() do tmpdir
             # Create a test file with unused imports
             test_file = joinpath(tmpdir, "test.jl")
-            write(test_file, """
-            module TestModule
+            write(
+                test_file, """
+                module TestModule
 
-            using Base: println, push!, pop!
-            using Test: @test
+                using Base: println, push!, pop!
+                using Test: @test
 
-            function test_func()
-                println("Hello")
-                # push! and pop! are not used
-            end
+                function test_func()
+                    println("Hello")
+                    # push! and pop! are not used
+                end
 
-            end
-            """)
+                end
+                """
+            )
 
             # Remove unused import
             success = OrgMaintenanceScripts.fix_unused_import(test_file, "push!")
@@ -72,7 +76,7 @@
             # Check the file was modified correctly
             content = read(test_file, String)
             @test occursin("using Base: println, pop!", content) ||
-                  occursin("using Base: pop!, println", content)
+                occursin("using Base: pop!, println", content)
             # Check that push! is not in the using statement (it can still be in comments)
             lines = split(content, '\n')
             using_lines = filter(line -> occursin(r"^\s*using\s+Base:", line), lines)
@@ -97,20 +101,22 @@
             end
 
             # Create source file with import issues
-            write(joinpath(pkg_dir, "src", "MockPackage.jl"), """
-            module MockPackage
+            write(
+                joinpath(pkg_dir, "src", "MockPackage.jl"), """
+                module MockPackage
 
-            using Base: push!  # This might be unused
+                using Base: push!  # This might be unused
 
-            export greet
+                export greet
 
-            function greet(name)
-                println("Hello, \$name!")  # println not explicitly imported
-                return nothing
-            end
+                function greet(name)
+                    println("Hello, \$name!")  # println not explicitly imported
+                    return nothing
+                end
 
-            end
-            """)
+                end
+                """
+            )
 
             # Note: We can't fully test the fix_explicit_imports function here
             # because it requires ExplicitImports.jl to be installed and working

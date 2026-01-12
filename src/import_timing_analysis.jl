@@ -58,66 +58,68 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
     # Create a temporary script to capture structured timing data
     analysis_script = joinpath(tempdir(), "import_timing_$(randstring(8)).jl")
 
-    write(analysis_script, """
-        using Pkg
-        using JSON3
-        
-        # Activate and instantiate the project
-        Pkg.activate(".")
-        Pkg.instantiate()
-        
-        # Capture timing data in a structured way
-        timing_data = []
-        raw_output = IOBuffer()
-        
-        # Redirect stdout to capture the timing output
-        original_stdout = stdout
-        redirect_stdout(raw_output) do
-            # Run with time imports flag
-            Base.eval(Main, :(using InteractiveUtils))
-            Base.eval(Main, :(@time_imports using \$(Symbol("$package_name"))))
-        end
-        
-        # Process the captured output
-        raw_str = String(take!(raw_output))
-        lines = split(raw_str, '\n')
-        
-        for line in lines
-            line = strip(line)
-            if isempty(line) || !contains(line, "ms")
-                continue
+    write(
+        analysis_script, """
+            using Pkg
+            using JSON3
+            
+            # Activate and instantiate the project
+            Pkg.activate(".")
+            Pkg.instantiate()
+            
+            # Capture timing data in a structured way
+            timing_data = []
+            raw_output = IOBuffer()
+            
+            # Redirect stdout to capture the timing output
+            original_stdout = stdout
+            redirect_stdout(raw_output) do
+                # Run with time imports flag
+                Base.eval(Main, :(using InteractiveUtils))
+                Base.eval(Main, :(@time_imports using \$(Symbol("$package_name"))))
             end
             
-            # Parse timing line format
-            timing_match = match(r"^\\s*(\\d+\\.?\\d*)\\s*ms\\s*([✓]?)\\s*(.+)\$", line)
-            if timing_match !== nothing
-                time_ms = parse(Float64, timing_match.captures[1])
-                success_marker = timing_match.captures[2]
-                pkg_name = strip(timing_match.captures[3])
+            # Process the captured output
+            raw_str = String(take!(raw_output))
+            lines = split(raw_str, '\n')
+            
+            for line in lines
+                line = strip(line)
+                if isempty(line) || !contains(line, "ms")
+                    continue
+                end
                 
-                push!(timing_data, Dict(
-                    "package" => pkg_name,
-                    "time_ms" => time_ms,
-                    "time_seconds" => time_ms / 1000.0,
-                    "is_precompile" => isempty(success_marker),
-                    "is_local" => (pkg_name == "$package_name"),
-                    "line" => line
-                ))
+                # Parse timing line format
+                timing_match = match(r"^\\s*(\\d+\\.?\\d*)\\s*ms\\s*([✓]?)\\s*(.+)\$", line)
+                if timing_match !== nothing
+                    time_ms = parse(Float64, timing_match.captures[1])
+                    success_marker = timing_match.captures[2]
+                    pkg_name = strip(timing_match.captures[3])
+                    
+                    push!(timing_data, Dict(
+                        "package" => pkg_name,
+                        "time_ms" => time_ms,
+                        "time_seconds" => time_ms / 1000.0,
+                        "is_precompile" => isempty(success_marker),
+                        "is_local" => (pkg_name == "$package_name"),
+                        "line" => line
+                    ))
+                end
             end
-        end
-        
-        # Output JSON directly
-        results = Dict(
-            "package_name" => "$package_name",
-            "timing_entries" => timing_data,
-            "raw_output" => raw_str,
-            "total_entries" => length(timing_data)
-        )
-        
-        println("===JSON_START===")
-        JSON3.pretty(stdout, results)
-        println("\n===JSON_END===")
-    """)
+            
+            # Output JSON directly
+            results = Dict(
+                "package_name" => "$package_name",
+                "timing_entries" => timing_data,
+                "raw_output" => raw_str,
+                "total_entries" => length(timing_data)
+            )
+            
+            println("===JSON_START===")
+            JSON3.pretty(stdout, results)
+            println("\n===JSON_END===")
+        """
+    )
 
     # Run the analysis script
     @info "Running import timing analysis in separate process..."
@@ -175,7 +177,8 @@ function analyze_import_timing_fallback(output::String, package_name::String)
             success_marker = timing_match.captures[2]
             pkg_name = strip(timing_match.captures[3])
 
-            push!(timing_data,
+            push!(
+                timing_data,
                 Dict(
                     "package" => pkg_name,
                     "time_ms" => time_ms,
@@ -183,7 +186,8 @@ function analyze_import_timing_fallback(output::String, package_name::String)
                     "is_precompile" => isempty(success_marker),
                     "is_local" => (pkg_name == package_name),
                     "line" => line
-                ))
+                )
+            )
         end
     end
 
@@ -235,7 +239,8 @@ function parse_import_timings(timing_data::Dict)
     import_timings = ImportTiming[]
 
     for (pkg_name, timing_info) in package_timings
-        push!(import_timings,
+        push!(
+            import_timings,
             ImportTiming(
                 pkg_name,
                 timing_info["total_time"],
@@ -244,7 +249,8 @@ function parse_import_timings(timing_data::Dict)
                 timing_info["dependencies"],  # TODO: Could be enhanced to detect actual deps
                 0,  # TODO: Could count dependencies
                 timing_info["is_local"]
-            ))
+            )
+        )
     end
 
     # Sort by total time (descending)
@@ -287,13 +293,13 @@ function generate_import_timing_report(repo_path::String, package_name::String =
 
         # Generate summary
         summary = if total_time < 1.0
-            "✅ Fast import ($(round(total_time, digits=2))s) - excellent performance"
+            "✅ Fast import ($(round(total_time, digits = 2))s) - excellent performance"
         elseif total_time < 3.0
-            "✅ Good import time ($(round(total_time, digits=2))s) - acceptable performance"
+            "✅ Good import time ($(round(total_time, digits = 2))s) - acceptable performance"
         elseif total_time < 10.0
-            "⚠️  Moderate import time ($(round(total_time, digits=2))s) - room for improvement"
+            "⚠️  Moderate import time ($(round(total_time, digits = 2))s) - room for improvement"
         else
-            "❌ Slow import time ($(round(total_time, digits=2))s) - significant impact on user experience"
+            "❌ Slow import time ($(round(total_time, digits = 2))s) - significant impact on user experience"
         end
 
         # Generate recommendations
@@ -304,21 +310,27 @@ function generate_import_timing_report(repo_path::String, package_name::String =
             slow_deps = filter(t -> !t.is_local && t.total_time > 0.5, import_timings)
             if !isempty(slow_deps)
                 slowest = slow_deps[1]
-                push!(recommendations,
-                    "Consider reducing dependency on '$(slowest.package_name)' ($(round(slowest.total_time, digits=2))s)")
+                push!(
+                    recommendations,
+                    "Consider reducing dependency on '$(slowest.package_name)' ($(round(slowest.total_time, digits = 2))s)"
+                )
             end
 
             # Precompilation recommendations
             high_precompile = filter(t -> t.precompile_time > 1.0, import_timings)
             if !isempty(high_precompile)
-                push!(recommendations,
-                    "High precompilation times detected - consider using PackageCompiler.jl for system images")
+                push!(
+                    recommendations,
+                    "High precompilation times detected - consider using PackageCompiler.jl for system images"
+                )
             end
 
             # General recommendations
             if length(import_timings) > 10
-                push!(recommendations,
-                    "Large number of dependencies ($(length(import_timings))) - consider reducing if possible")
+                push!(
+                    recommendations,
+                    "Large number of dependencies ($(length(import_timings))) - consider reducing if possible"
+                )
             end
 
             if total_time > 5.0
@@ -344,8 +356,9 @@ function generate_import_timing_report(repo_path::String, package_name::String =
         )
 
     catch e
-        @error "Failed to analyze import timing for $repo_path" exception=(
-            e, catch_backtrace())
+        @error "Failed to analyze import timing for $repo_path" exception = (
+            e, catch_backtrace(),
+        )
         return ImportTimingReport(
             basename(repo_path),
             package_name,
@@ -376,16 +389,16 @@ function analyze_repo_import_timing(repo_path::String; package_name::String = ""
     println("Analysis Time: $(report.analysis_time)")
     println("="^60)
     println(report.summary)
-    println("\\nTotal Import Time: $(round(report.total_import_time, digits=2)) seconds")
+    println("\\nTotal Import Time: $(round(report.total_import_time, digits = 2)) seconds")
 
     if report.total_import_time > 0
         println("\\nMajor Contributors:")
         for (i, timing) in enumerate(report.major_contributors)
             local_marker = timing.is_local ? " (LOCAL)" : ""
             println("  $i. $(timing.package_name)$local_marker")
-            println("     Total: $(round(timing.total_time, digits=2))s")
+            println("     Total: $(round(timing.total_time, digits = 2))s")
             if timing.precompile_time > 0.01
-                println("     Precompile: $(round(timing.precompile_time, digits=2))s, Load: $(round(timing.load_time, digits=2))s")
+                println("     Precompile: $(round(timing.precompile_time, digits = 2))s, Load: $(round(timing.load_time, digits = 2))s")
             end
             println()
         end
@@ -422,11 +435,13 @@ end
 
 Analyze import timing across all repositories in a GitHub organization.
 """
-function analyze_org_import_timing(org::String;
+function analyze_org_import_timing(
+        org::String;
         auth_token::String = "",
         work_dir::String = mktempdir(),
         output_dir::String = "",
-        max_repos::Int = 0)
+        max_repos::Int = 0
+    )
     @info "Analyzing import timing for organization: $org"
 
     # Get all repositories
@@ -473,7 +488,7 @@ function analyze_org_import_timing(org::String;
             end
 
         catch e
-            @error "Failed to process $repo_name" exception=(e, catch_backtrace())
+            @error "Failed to process $repo_name" exception = (e, catch_backtrace())
             results[repo_name] = ImportTimingReport(
                 repo_name,
                 "",
@@ -512,18 +527,20 @@ function write_import_timing_report(report::ImportTimingReport, output_file::Str
         "dependency_chain" => report.dependency_chain,
         "recommendations" => report.recommendations,
         "raw_output" => report.raw_output,
-        "major_contributors" => [Dict(
-                                     "package_name" => timing.package_name,
-                                     "total_time" => timing.total_time,
-                                     "precompile_time" => timing.precompile_time,
-                                     "load_time" => timing.load_time,
-                                     "dependencies" => timing.dependencies,
-                                     "dep_count" => timing.dep_count,
-                                     "is_local" => timing.is_local
-                                 ) for timing in report.major_contributors]
+        "major_contributors" => [
+            Dict(
+                    "package_name" => timing.package_name,
+                    "total_time" => timing.total_time,
+                    "precompile_time" => timing.precompile_time,
+                    "load_time" => timing.load_time,
+                    "dependencies" => timing.dependencies,
+                    "dep_count" => timing.dep_count,
+                    "is_local" => timing.is_local
+                ) for timing in report.major_contributors
+        ]
     )
 
-    open(output_file, "w") do io
+    return open(output_file, "w") do io
         JSON3.pretty(io, report_data)
     end
 end
@@ -534,7 +551,8 @@ end
 Generate a summary report for import timing across the entire organization.
 """
 function generate_org_import_summary_report(
-        org::String, results::Dict{String, ImportTimingReport}, output_dir::String)
+        org::String, results::Dict{String, ImportTimingReport}, output_dir::String
+    )
     if isempty(output_dir)
         output_dir = tempdir()
     end
@@ -550,9 +568,12 @@ function generate_org_import_summary_report(
 
     # Find slowest repositories
     slowest_repos = sort(
-        [(name, report.total_import_time)
-         for (name, report) in results if report.total_import_time > 0],
-        by = x -> x[2], rev = true)
+        [
+            (name, report.total_import_time)
+                for (name, report) in results if report.total_import_time > 0
+        ],
+        by = x -> x[2], rev = true
+    )
 
     # Aggregate slow dependencies across organization
     all_dependencies = Dict{String, Vector{Float64}}()
@@ -568,8 +589,10 @@ function generate_org_import_summary_report(
     end
 
     # Calculate average time per dependency across all repos
-    dependency_stats = [(dep, mean(times), length(times))
-                        for (dep, times) in all_dependencies]
+    dependency_stats = [
+        (dep, mean(times), length(times))
+            for (dep, times) in all_dependencies
+    ]
     sort!(dependency_stats, by = x -> x[2], rev = true)  # Sort by average time
 
     # Generate markdown report
@@ -583,8 +606,8 @@ function generate_org_import_summary_report(
         println(io, "- **Total Repositories Analyzed**: $total_repos")
         println(io, "- **Successful Analyses**: $successful_analyses")
         println(io, "- **Failed Analyses**: $failed_analyses")
-        println(io, "- **Average Import Time**: $(round(avg_import_time, digits=2)) seconds")
-        println(io, "- **Total Import Time Across Org**: $(round(total_import_time, digits=2)) seconds")
+        println(io, "- **Average Import Time**: $(round(avg_import_time, digits = 2)) seconds")
+        println(io, "- **Total Import Time Across Org**: $(round(total_import_time, digits = 2)) seconds")
         println(io)
 
         if !isempty(slowest_repos)
@@ -597,7 +620,7 @@ function generate_org_import_summary_report(
                 else
                     "❌"
                 end
-                println(io, "$i. $status **$repo**: $(round(time, digits=2))s")
+                println(io, "$i. $status **$repo**: $(round(time, digits = 2))s")
             end
             println(io)
         end
@@ -609,7 +632,7 @@ function generate_org_import_summary_report(
             for (i, (dep, avg_time, repo_count)) in
                 enumerate(dependency_stats[1:min(10, end)])
                 println(io, "$i. **$dep**")
-                println(io, "   - Average impact: $(round(avg_time, digits=2))s")
+                println(io, "   - Average impact: $(round(avg_time, digits = 2))s")
                 println(io, "   - Affects $repo_count repositories")
                 println(io)
             end
@@ -620,13 +643,17 @@ function generate_org_import_summary_report(
         if avg_import_time < 1.0
             println(io, "🎉 Excellent! Average import times are very good across the organization.")
         elseif avg_import_time < 3.0
-            println(io,
-                "✅ Good import performance overall. Focus on the slowest packages for improvements.")
+            println(
+                io,
+                "✅ Good import performance overall. Focus on the slowest packages for improvements."
+            )
         elseif avg_import_time < 8.0
             println(io, "⚠️ Moderate import times. Consider organization-wide optimization initiatives.")
         else
-            println(io,
-                "❌ Slow import times detected. Immediate attention recommended for user experience.")
+            println(
+                io,
+                "❌ Slow import times detected. Immediate attention recommended for user experience."
+            )
         end
 
         println(io)
@@ -635,8 +662,10 @@ function generate_org_import_summary_report(
 
         if !isempty(dependency_stats)
             worst_dep = dependency_stats[1][1]
-            println(io,
-                "2. **Dependency Review**: Investigate organization's usage of '$worst_dep' and similar slow dependencies")
+            println(
+                io,
+                "2. **Dependency Review**: Investigate organization's usage of '$worst_dep' and similar slow dependencies"
+            )
         end
 
         println(io, "3. **Best Practices**: Share optimization techniques from fast-loading packages")
@@ -651,13 +680,15 @@ function generate_org_import_summary_report(
             status = report.total_import_time >= 0 ? "✅ Success" : "❌ Failed"
             println(io, "- **Status**: $status")
             if report.total_import_time >= 0
-                println(io, "- **Import Time**: $(round(report.total_import_time, digits=2))s")
+                println(io, "- **Import Time**: $(round(report.total_import_time, digits = 2))s")
                 println(io, "- **Package**: $(report.package_name)")
                 if !isempty(report.major_contributors)
                     slowest_dep = report.major_contributors[1]
                     if !slowest_dep.is_local
-                        println(io,
-                            "- **Slowest Dependency**: $(slowest_dep.package_name) ($(round(slowest_dep.total_time, digits=2))s)")
+                        println(
+                            io,
+                            "- **Slowest Dependency**: $(slowest_dep.package_name) ($(round(slowest_dep.total_time, digits = 2))s)"
+                        )
                     end
                 end
             end

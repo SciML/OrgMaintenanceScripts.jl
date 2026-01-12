@@ -66,7 +66,7 @@ function get_available_compat_updates(project_path::String)
                 push!(updates, CompatUpdate(pkg_name, current_compat, latest_version, true))
             end
         catch e
-            @warn "Failed to check updates for $pkg_name" exception=e
+            @warn "Failed to check updates for $pkg_name" exception = e
         end
     end
 
@@ -215,7 +215,7 @@ function bump_compat_entry(project_path::String, package_name::String, new_versi
         TOML.print(io, project)
     end
 
-    @info "Updated $package_name compat to $new_compat"
+    return @info "Updated $package_name compat to $new_compat"
 end
 
 """
@@ -240,11 +240,13 @@ If tests pass, optionally create a PR.
 
   - `(success::Bool, message::String, pr_url::Union{String,Nothing}, bumped_packages::Vector{String})`
 """
-function bump_compat_and_test(repo_path::String;
+function bump_compat_and_test(
+        repo_path::String;
         package_name::Union{String, Nothing} = nothing,
         bump_all::Bool = false,
         create_pr::Bool = true,
-        fork_user::String = "")
+        fork_user::String = ""
+    )
     if create_pr && isempty(fork_user)
         return (false, "fork_user must be provided when create_pr=true", nothing, String[])
     end
@@ -265,8 +267,10 @@ function bump_compat_and_test(repo_path::String;
     if !isnothing(package_name)
         updates = filter(u -> u.package_name == package_name, updates)
         if isempty(updates)
-            return (false, "No major version update available for $package_name",
-                nothing, String[])
+            return (
+                false, "No major version update available for $package_name",
+                nothing, String[],
+            )
         end
     end
 
@@ -290,7 +294,7 @@ function bump_compat_and_test(repo_path::String;
             bump_compat_entry(project_path, update.package_name, update.latest_version)
             push!(bumped_packages, update.package_name)
         catch e
-            @error "Failed to bump $(update.package_name)" exception=e
+            @error "Failed to bump $(update.package_name)" exception = e
         end
     end
 
@@ -303,7 +307,7 @@ function bump_compat_and_test(repo_path::String;
         try
             run(`julia --project=. -e "using Pkg; Pkg.update()"`)
         catch e
-            @warn "Failed to update manifest" exception=e
+            @warn "Failed to update manifest" exception = e
         end
     end
 
@@ -397,7 +401,7 @@ function run_package_tests(repo_path::String; timeout_minutes::Int = 30)
             end
         end
     catch e
-        @error "Error running tests" exception=e
+        @error "Error running tests" exception = e
         return false
     end
 end
@@ -408,7 +412,7 @@ end
 Create a pull request for compat updates.
 """
 function create_compat_pr(repo_path::String, bumped_packages::Vector{String}, fork_user::String)
-    cd(repo_path) do
+    return cd(repo_path) do
         # Get repo info
         remote_url = strip(read(`git remote get-url origin`, String))
         m = match(r"github\.com[/:]([^/]+)/([^/]+?)(?:\.git)?$", remote_url)
@@ -462,12 +466,13 @@ function create_compat_pr(repo_path::String, bumped_packages::Vector{String}, fo
         try
             pr_output = read(
                 `gh pr create --repo $org/$repo --head $fork_user:$current_branch --title "$pr_title" --body-file pr_body.txt`,
-                String)
+                String
+            )
             rm("pr_body.txt")
             return strip(pr_output)
         catch e
             rm("pr_body.txt")
-            @error "Failed to create PR" exception=e
+            @error "Failed to create PR" exception = e
             return nothing
         end
     end
@@ -497,12 +502,14 @@ This function supports repositories with subpackages in the /lib directory.
 
   - `(success::Bool, message::String, pr_url::Union{String,Nothing}, bumped_info::Dict)`
 """
-function bump_compat_and_test_all(repo_path::String;
+function bump_compat_and_test_all(
+        repo_path::String;
         package_name::Union{String, Nothing} = nothing,
         bump_all::Bool = false,
         create_pr::Bool = true,
         fork_user::String = "",
-        include_subpackages::Bool = true)
+        include_subpackages::Bool = true
+    )
     if create_pr && isempty(fork_user)
         return (false, "fork_user must be provided when create_pr=true", nothing, Dict())
     end
@@ -565,7 +572,7 @@ function bump_compat_and_test_all(repo_path::String;
                 push!(bumped_packages, update.package_name)
                 total_bumped += 1
             catch e
-                @error "Failed to bump $(update.package_name) in $rel_path" exception=e
+                @error "Failed to bump $(update.package_name) in $rel_path" exception = e
             end
         end
 
@@ -586,7 +593,7 @@ function bump_compat_and_test_all(repo_path::String;
                 @info "Updating manifest for $rel_path"
                 run(`julia --project=. -e "using Pkg; Pkg.update()"`)
             catch e
-                @warn "Failed to update manifest for $rel_path" exception=e
+                @warn "Failed to update manifest for $rel_path" exception = e
             end
         end
     end
@@ -645,8 +652,10 @@ Create a pull request for compat updates across multiple Project.toml files.
 """
 function create_compat_pr_multi(
         repo_path::String, bumped_info::Dict{
-            String, Vector{String}}, fork_user::String)
-    cd(repo_path) do
+            String, Vector{String},
+        }, fork_user::String
+    )
+    return cd(repo_path) do
         # Get repo info
         remote_url = strip(read(`git remote get-url origin`, String))
         m = match(r"github\.com[/:]([^/]+)/([^/]+?)(?:\.git)?$", remote_url)
@@ -706,12 +715,13 @@ function create_compat_pr_multi(
         try
             pr_output = read(
                 `gh pr create --repo $org/$repo --head $fork_user:$current_branch --title "$pr_title" --body-file pr_body.txt`,
-                String)
+                String
+            )
             rm("pr_body.txt")
             return strip(pr_output)
         catch e
             rm("pr_body.txt")
-            @error "Failed to create PR" exception=e
+            @error "Failed to create PR" exception = e
             return nothing
         end
     end
@@ -745,14 +755,16 @@ This function now supports repositories with subpackages in /lib directories.
 
   - `(successes::Vector{String}, failures::Vector{String}, pr_urls::Vector{String})`
 """
-function bump_compat_org_repositories(org::String = "SciML";
+function bump_compat_org_repositories(
+        org::String = "SciML";
         package_name::Union{String, Nothing} = nothing,
         bump_all::Bool = false,
         create_pr::Bool = true,
         fork_user::String = "",
         limit::Int = 100,
         log_file::String = "",
-        include_subpackages::Bool = true)
+        include_subpackages::Bool = true
+    )
     if create_pr && isempty(fork_user)
         error("fork_user must be provided when create_pr=true")
     end
@@ -764,7 +776,7 @@ function bump_compat_org_repositories(org::String = "SciML";
         log_file = joinpath(log_dir, "compat_bump_$(org)_$(Dates.format(now(), "yyyy-mm-dd_HHMMSS")).log")
     end
 
-    @info "Starting organization-wide compat bumping" org=org log_file=log_file
+    @info "Starting organization-wide compat bumping" org = org log_file = log_file
 
     # Get repositories
     @info "Fetching repositories from $org..."
@@ -773,7 +785,7 @@ function bump_compat_org_repositories(org::String = "SciML";
         output = read(cmd, String)
         filter(!isempty, split(strip(output), '\n'))
     catch e
-        @error "Failed to fetch repositories" exception=e
+        @error "Failed to fetch repositories" exception = e
         return (String[], String[], String[])
     end
 
@@ -797,7 +809,7 @@ function bump_compat_org_repositories(org::String = "SciML";
         println(log_io)
 
         for (i, repo) in enumerate(repos)
-            @info "Processing repository" repo=repo progress="$i/$(length(repos))"
+            @info "Processing repository" repo = repo progress = "$i/$(length(repos))"
             println(log_io, "\n[$i/$(length(repos))] Processing $repo...")
 
             repo_url = "https://github.com/$org/$repo.git"
@@ -820,8 +832,8 @@ function bump_compat_org_repositories(org::String = "SciML";
                 if use_multi
                     # Use multi-project aware function
                     success, message,
-                    pr_url,
-                    bumped_info = bump_compat_and_test_all(
+                        pr_url,
+                        bumped_info = bump_compat_and_test_all(
                         repo_path;
                         package_name = package_name,
                         bump_all = bump_all,
@@ -854,8 +866,8 @@ function bump_compat_org_repositories(org::String = "SciML";
                 else
                     # Use original single-project function
                     success, message,
-                    pr_url,
-                    bumped = bump_compat_and_test(
+                        pr_url,
+                        bumped = bump_compat_and_test(
                         repo_path;
                         package_name = package_name,
                         bump_all = bump_all,
@@ -915,7 +927,7 @@ function bump_compat_org_repositories(org::String = "SciML";
 
     rm(working_dir; force = true, recursive = true)
 
-    @info "Organization compat bumping complete" successes=length(successes) failures=length(failures) prs=length(pr_urls)
+    @info "Organization compat bumping complete" successes = length(successes) failures = length(failures) prs = length(pr_urls)
 
     return (successes, failures, pr_urls)
 end
