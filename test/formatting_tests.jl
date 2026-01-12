@@ -1,5 +1,5 @@
 # Note: OrgMaintenanceScripts is already loaded by runtests.jl
-using Pkg
+using Pkg: Pkg
 
 @testset "Formatting Functions" begin
     @testset "format_repository with invalid inputs" begin

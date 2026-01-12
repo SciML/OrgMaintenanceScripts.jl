@@ -1,8 +1,19 @@
 module OrgMaintenanceScripts
 
-using Pkg
-using TOML
-using Dates
+using Dates: Dates, DateTime, now
+using Distributed: Distributed, @everywhere, addprocs, nworkers, pmap
+using ExplicitImports: ExplicitImports, check_all_explicit_imports_are_public,
+                        check_all_qualified_accesses_via_owners, check_no_implicit_imports,
+                        check_no_stale_explicit_imports
+using HTTP: HTTP
+using JSON3: JSON3
+using JuliaFormatter: JuliaFormatter
+using LibGit2: LibGit2
+using LocalRegistry: LocalRegistry
+using Pkg: Pkg
+using Random: Random, randstring
+using Statistics: Statistics, mean
+using TOML: TOML
 
 # Include project utilities for handling multiple Project.toml files
 include("project_utils.jl")

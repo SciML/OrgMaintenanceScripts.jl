@@ -1,10 +1,12 @@
 # Explicit Imports Fixer
 # Automatically fix explicit import issues using ExplicitImports.jl
 
-using Pkg
-using TOML
-using ExplicitImports
-using JSON3
+using Pkg: Pkg
+using TOML: TOML
+using ExplicitImports: ExplicitImports, check_all_explicit_imports_are_public,
+                        check_all_qualified_accesses_via_owners, check_no_implicit_imports,
+                        check_no_stale_explicit_imports
+using JSON3: JSON3
 
 """
     run_explicit_imports_check_all(repo_path::String; verbose=true, include_subpackages=true)

@@ -1,11 +1,11 @@
 # Minimum Version Fixer
 # Automatically fix minimum version bounds for Julia packages
 
-using Pkg
-using TOML
-using Dates
-using HTTP
-using JSON3
+using Pkg: Pkg
+using TOML: TOML
+using Dates: DateTime, now
+using HTTP: HTTP
+using JSON3: JSON3
 
 """
     setup_resolver(work_dir::String)

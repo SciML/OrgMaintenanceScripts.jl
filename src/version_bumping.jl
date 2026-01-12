@@ -1,9 +1,9 @@
-using Pkg
-using TOML
-using LibGit2
-using HTTP
-using JSON3
-using LocalRegistry
+using Pkg: Pkg
+using TOML: TOML
+using LibGit2: LibGit2
+using HTTP: HTTP
+using JSON3: JSON3
+using LocalRegistry: LocalRegistry
 
 """
     bump_minor_version(version_str::String) -> String

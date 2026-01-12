@@ -1,7 +1,7 @@
 # JET.jl static analysis tests
 # These tests verify type stability and catch potential runtime errors
 
-using JET
+using JET: JET, @test_opt
 
 @testset "JET static analysis" begin
     @testset "Project utilities" begin

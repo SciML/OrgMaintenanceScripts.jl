@@ -6,12 +6,12 @@ but locally. It parses CI workflow files, extracts test groups, and runs them in
 using Julia's Distributed computing capabilities with comprehensive logging.
 """
 
-using Distributed
-using Dates
-using YAML
-using Pkg
-using Logging
-using Printf
+using Distributed: Distributed, @everywhere, addprocs, nworkers, pmap
+using Dates: DateTime, now
+using YAML: YAML
+using Pkg: Pkg
+using Logging: Logging
+using Printf: Printf
 
 struct TestGroup
     name::String

@@ -1,8 +1,8 @@
-using Dates
-using LibGit2
-using Distributed
-using HTTP
-using JSON3
+using Dates: DateTime, now
+using LibGit2: LibGit2
+using Distributed: Distributed, @everywhere, addprocs, nworkers, pmap
+using HTTP: HTTP
+using JSON3: JSON3
 
 const VERSION_CHECK_PATTERNS = [
     r"@static\s+if\s+VERSION\s*[><=]=?\s*v\"(\d+\.\d+(?:\.\d+)?)\""i,

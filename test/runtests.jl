@@ -1,7 +1,7 @@
 using OrgMaintenanceScripts
-using Test
-using TOML
-using Dates
+using Test: Test, @test, @testset, @test_throws, @test_logs, @test_skip, @test_broken
+using TOML: TOML
+using Dates: Dates
 
 @testset "OrgMaintenanceScripts.jl" begin
     @testset "Version bumping" begin
@@ -125,6 +125,7 @@ using Dates
         @test_logs (:warn,) OrgMaintenanceScripts.update_project_tomls()
     end
 
+    include("explicit_imports_tests.jl")
     include("formatting_tests.jl")
     include("min_version_fixer_tests.jl")
     include("version_check_finder_tests.jl")

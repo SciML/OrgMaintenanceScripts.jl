@@ -1,9 +1,9 @@
-using Test
+using Test: Test, @test, @testset, @test_throws
 using OrgMaintenanceScripts
-using Dates
-using YAML
-using Pkg
-using Distributed
+using Dates: Dates
+using YAML: YAML
+using Pkg: Pkg
+using Distributed: Distributed
 
 @testset "Multiprocess Testing" begin
 

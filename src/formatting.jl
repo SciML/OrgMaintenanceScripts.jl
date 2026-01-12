@@ -1,8 +1,8 @@
 # Formatting maintenance functions for SciML repositories
 
-using Pkg
-using Dates
-using JuliaFormatter
+using Pkg: Pkg
+using Dates: DateTime, now
+using JuliaFormatter: JuliaFormatter
 
 """
     format_repository(repo_url::String; 

@@ -1,11 +1,11 @@
-using Dates
-using LibGit2
-using Distributed
-using HTTP
-using JSON3
-using TOML
-using Random
-using Statistics
+using Dates: DateTime, now
+using LibGit2: LibGit2
+using Distributed: Distributed, @everywhere, addprocs, nworkers, pmap
+using HTTP: HTTP
+using JSON3: JSON3
+using TOML: TOML
+using Random: Random, randstring
+using Statistics: Statistics, mean
 
 struct ImportTiming
     package_name::String

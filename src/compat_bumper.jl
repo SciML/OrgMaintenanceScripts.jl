@@ -1,9 +1,9 @@
 # Compat bumping functionality for SciML repositories
 
-using Pkg
-using TOML
-using Dates
-using LibGit2
+using Pkg: Pkg
+using TOML: TOML
+using Dates: DateTime, now
+using LibGit2: LibGit2
 
 """
     CompatUpdate
