@@ -1,0 +1,12 @@
+# Root test-group matrix for OrgMaintenanceScripts.jl, consumed by the canonical
+# grouped-tests.yml@v1 reusable workflow (see .github/workflows/CI.yml). Each
+# group runs on every Julia version it lists. runtests.jl dispatches on GROUP.
+#
+# Core reproduces the previous CI matrix (Julia 1.10 == "lts", and "1").
+# QA runs Aqua/JET static analysis in an isolated environment (test/qa).
+
+[Core]
+versions = ["lts", "1"]
+
+[QA]
+versions = ["lts", "1"]
