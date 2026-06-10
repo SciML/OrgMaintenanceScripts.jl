@@ -1,10 +1,21 @@
+using Pkg
 using OrgMaintenanceScripts
 using Test
 using TOML
 using Dates
 
-@testset "OrgMaintenanceScripts.jl" begin
-    @testset "Version bumping" begin
+const GROUP = get(ENV, "GROUP", "All")
+
+if GROUP == "QA"
+    Pkg.activate(joinpath(@__DIR__, "qa"))
+    Pkg.develop(PackageSpec(path = joinpath(@__DIR__, "..")))
+    Pkg.instantiate()
+    include("qa.jl")
+end
+
+if GROUP == "All" || GROUP == "Core"
+    @testset "OrgMaintenanceScripts.jl" begin
+        @testset "Version bumping" begin
         # Test bump_minor_version
         @test OrgMaintenanceScripts.bump_minor_version("1.2.3") == "1.3.0"
         @test OrgMaintenanceScripts.bump_minor_version("0.1.0") == "0.2.0"
@@ -134,7 +145,6 @@ using Dates
     # Temporarily commented out due to syntax error in multiprocess_testing.jl
     # include("multiprocess_testing_tests.jl")
     include("documentation_cleanup_tests.jl")
-    # JET tests are available for manual static analysis but not included in CI
-    # To run JET analysis manually: julia --project=. -e 'using JET; include("test/jet_tests.jl")'
-    # include("jet_tests.jl")
+    # JET/Aqua static analysis runs in the QA group (GROUP=QA -> test/qa.jl).
+    end
 end
