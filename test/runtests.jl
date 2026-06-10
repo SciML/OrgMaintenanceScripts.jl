@@ -1,4 +1,8 @@
 using Pkg
+using OrgMaintenanceScripts
+using Test
+using TOML
+using Dates
 
 const GROUP = get(ENV, "GROUP", "All")
 
@@ -10,11 +14,6 @@ if GROUP == "QA"
 end
 
 if GROUP == "All" || GROUP == "Core"
-    using OrgMaintenanceScripts
-    using Test
-    using TOML
-    using Dates
-
     @testset "OrgMaintenanceScripts.jl" begin
         @testset "Version bumping" begin
         # Test bump_minor_version
