@@ -1,4 +1,5 @@
-# Note: OrgMaintenanceScripts is already loaded by runtests.jl
+using OrgMaintenanceScripts
+using Test
 
 @testset "Documentation Cleanup Tests" begin
 

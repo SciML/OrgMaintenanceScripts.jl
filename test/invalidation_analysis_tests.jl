@@ -1,4 +1,6 @@
-# Note: OrgMaintenanceScripts is already loaded by runtests.jl
+using OrgMaintenanceScripts
+using Test
+using Dates
 
 @testset "Invalidation Analysis Tests" begin
     # Create a simple test package structure
