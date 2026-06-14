@@ -1,4 +1,5 @@
-# Note: OrgMaintenanceScripts is already loaded by runtests.jl
+using OrgMaintenanceScripts
+using Test
 
 @testset "Import Timing Analysis Tests" begin
     # Create a simple test package structure
