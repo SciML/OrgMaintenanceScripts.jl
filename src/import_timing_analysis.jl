@@ -69,18 +69,22 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
             
             # Capture timing data in a structured way
             timing_data = []
-            raw_output = IOBuffer()
-            
-            # Redirect stdout to capture the timing output
-            original_stdout = stdout
-            redirect_stdout(raw_output) do
-                # Run with time imports flag
-                Base.eval(Main, :(using InteractiveUtils))
-                Base.eval(Main, :(@time_imports using \$(Symbol("$package_name"))))
+
+            # Redirect stdout to a temporary file to capture the timing output.
+            # `redirect_stdout` accepts a file IOStream (not an IOBuffer), so we
+            # write to a temp file and read it back.
+            timing_capture_file = tempname()
+            open(timing_capture_file, "w") do capture_io
+                redirect_stdout(capture_io) do
+                    # Run with time imports flag
+                    Base.eval(Main, :(using InteractiveUtils))
+                    Base.eval(Main, :(@time_imports using \$(Symbol("$package_name"))))
+                end
             end
-            
+
             # Process the captured output
-            raw_str = String(take!(raw_output))
+            raw_str = read(timing_capture_file, String)
+            rm(timing_capture_file; force = true)
             lines = split(raw_str, '\n')
             
             for line in lines
