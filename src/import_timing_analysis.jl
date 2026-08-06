@@ -1,22 +1,79 @@
-using Dates
-using LibGit2
-using Distributed
-using HTTP
-using JSON3
-using TOML
-using Random
-using Statistics
+import Dates
+import JSON3
+import TOML
+using Dates: DateTime, now
+using Random: randstring
+using Statistics: mean
 
+"""
+    ImportTiming(package_name, total_time, precompile_time, load_time,
+                 dependencies, dep_count, is_local)
+
+Record import-time measurements for one package.
+
+# Fields
+
+- `package_name::String`: package represented by the timing entry.
+- `total_time::Float64`: total import time in seconds.
+- `precompile_time::Float64`: time spent precompiling in seconds.
+- `load_time::Float64`: load time excluding precompilation in seconds.
+- `dependencies::Vector{String}`: direct dependencies reported for the package.
+- `dep_count::Int`: number of reported dependencies.
+- `is_local::Bool`: whether the entry represents the repository being analyzed.
+
+# Examples
+
+```jldoctest
+timing = ImportTiming("Demo", 0.25, 0.1, 0.15, ["Dates"], 1, true)
+timing.load_time
+
+# output
+
+0.15
+```
+"""
 struct ImportTiming
     package_name::String
-    total_time::Float64        # Total compilation time in seconds
-    precompile_time::Float64   # Time spent in precompilation
-    load_time::Float64         # Time spent loading (excluding precompilation)
-    dependencies::Vector{String}  # Direct dependencies
-    dep_count::Int            # Number of dependencies
-    is_local::Bool            # Whether this is the local package being analyzed
+    total_time::Float64
+    precompile_time::Float64
+    load_time::Float64
+    dependencies::Vector{String}
+    dep_count::Int
+    is_local::Bool
 end
 
+"""
+    ImportTimingReport(repo, package_name, total_import_time, major_contributors,
+                       dependency_chain, analysis_time, summary, recommendations,
+                       raw_output)
+
+Collect import-time analysis results for one repository.
+
+# Fields
+
+- `repo::String`: repository path or identifier analyzed.
+- `package_name::String`: local package loaded by the analysis.
+- `total_import_time::Float64`: aggregate import time in seconds.
+- `major_contributors::Vector{ImportTiming}`: highest-cost timing entries.
+- `dependency_chain::Vector{String}`: dependencies in observed load order.
+- `analysis_time::DateTime`: time at which analysis completed.
+- `summary::String`: concise human-readable result.
+- `recommendations::Vector{String}`: suggested follow-up actions.
+- `raw_output::String`: unprocessed `@time_imports` output.
+
+# Examples
+
+```jldoctest
+using Dates
+report = ImportTimingReport("Demo.jl", "Demo", 0.0, ImportTiming[], String[],
+    DateTime(2026, 1, 1), "No imports measured", String[], "")
+report.package_name
+
+# output
+
+"Demo"
+```
+"""
 struct ImportTimingReport
     repo::String
     package_name::String
@@ -26,7 +83,7 @@ struct ImportTimingReport
     analysis_time::DateTime
     summary::String
     recommendations::Vector{String}
-    raw_output::String        # Raw @time_imports output for debugging
+    raw_output::String
 end
 
 """
@@ -62,7 +119,7 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
         analysis_script, """
             using Pkg
             using JSON3
-            
+
             # Activate and instantiate the project
             Pkg.activate(".")
             Pkg.instantiate()
@@ -77,8 +134,8 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
             open(timing_capture_file, "w") do capture_io
                 redirect_stdout(capture_io) do
                     # Run with time imports flag
-                    Base.eval(Main, :(using InteractiveUtils))
-                    Base.eval(Main, :(@time_imports using \$(Symbol("$package_name"))))
+                    eval(:(using InteractiveUtils))
+                    eval(:(@time_imports using \$(Symbol("$package_name"))))
                 end
             end
 
@@ -156,7 +213,7 @@ function analyze_import_timing_in_process(repo_path::String, package_name::Strin
         rm(analysis_script; force = true)
 
         # If the command failed, rethrow with more context
-        if isa(e, Base.IOError) || isa(e, Base.ProcessFailedException)
+        if isa(e, SystemError) || isa(e, ProcessFailedException)
             error("Failed to run import timing analysis: $e")
         else
             rethrow(e)

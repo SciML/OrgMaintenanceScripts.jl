@@ -1,9 +1,7 @@
-using Pkg
-using TOML
-using LibGit2
-using HTTP
-using JSON3
-using LocalRegistry
+import HTTP
+import JSON3
+import LocalRegistry
+import TOML
 
 """
     bump_minor_version(version_str::String) -> String
@@ -285,16 +283,12 @@ function bump_and_register_repo(repo_path::String; registry = "General", push::B
 
     # Commit changes if any packages were updated
     if !isempty(registered) || !isempty(failed_packages)
-        repo = LibGit2.GitRepo(repo_path)
-        try
-            LibGit2.add!(repo, ".")
-            sig = LibGit2.Signature("OrgMaintenanceScripts", "noreply@sciml.ai")
-            msg = "Bump minor versions for registration\n\nPackages: $(join(vcat(collect(registered), failed_packages), ", "))"
-            LibGit2.commit(repo, msg; author = sig, committer = sig)
-            @info "Committed version bumps"
-        finally
-            close(repo)
-        end
+        msg = "Bump minor versions for registration\n\nPackages: $(join(vcat(collect(registered), failed_packages), ", "))"
+        run(`git -C $repo_path add .`)
+        run(
+            `git -C $repo_path -c user.name=OrgMaintenanceScripts -c user.email=noreply@sciml.ai commit -m $msg`
+        )
+        @info "Committed version bumps"
     end
 
     return (registered = collect(registered), failed = failed_packages)
@@ -470,7 +464,7 @@ function get_org_repos(org::String; auth_token::String = "")
         url = "https://api.github.com/orgs/$org/repos?page=$page&per_page=100"
 
         try
-            response = HTTP.get(url, headers)
+            response = HTTP.request("GET", url, headers)
             repos_data = JSON3.read(String(response.body))
 
             if isempty(repos_data)
@@ -612,11 +606,44 @@ function bump_and_register_org(
     return results
 end
 
-# Keep the placeholder functions for backward compatibility
+"""
+    update_manifests()
+
+Emit a deprecation warning for the former manifest-update entry point.
+
+Use [`bump_and_register_repo`](@ref) or [`bump_and_register_org`](@ref) for the
+supported version-bump and registration workflow. This function performs no file
+updates and returns `nothing`.
+
+# Examples
+
+```jldoctest
+julia> using Test
+
+julia> @test_logs (:warn, r"update_manifests is deprecated") update_manifests()
+```
+"""
 function update_manifests()
     return @warn "update_manifests is deprecated. Use bump_and_register_repo or bump_and_register_org instead."
 end
 
+"""
+    update_project_tomls()
+
+Emit a deprecation warning for the former project-update entry point.
+
+Use [`bump_and_register_repo`](@ref) or [`bump_and_register_org`](@ref) for the
+supported version-bump and registration workflow. This function performs no file
+updates and returns `nothing`.
+
+# Examples
+
+```jldoctest
+julia> using Test
+
+julia> @test_logs (:warn, r"update_project_tomls is deprecated") update_project_tomls()
+```
+"""
 function update_project_tomls()
     return @warn "update_project_tomls is deprecated. Use bump_and_register_repo or bump_and_register_org instead."
 end

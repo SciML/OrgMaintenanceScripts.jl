@@ -1,22 +1,18 @@
-# QA group: Aqua.jl project-quality checks and JET.jl static analysis.
-# Runs in the isolated test/qa environment (see test/qa/Project.toml), gated on
-# GROUP == "QA" in runtests.jl.
-
 using OrgMaintenanceScripts
-using Test
-using Aqua
-using JET
+using SciMLTesting
 using Dates
+using Test
 
-@testset "Aqua quality assurance" begin
-    # stale_deps and deps_compat are known failing and marked @test_broken below.
-    # Tracked in https://github.com/SciML/OrgMaintenanceScripts.jl/issues/60
-    Aqua.test_all(OrgMaintenanceScripts; stale_deps = false, deps_compat = false)
-    # Aqua stale deps: SnoopCompileCore, YAML — tracked in https://github.com/SciML/OrgMaintenanceScripts.jl/issues/60
-    @test_broken false
-    # Aqua deps_compat: missing compat for Dates, Distributed, LibGit2, Logging, Pkg, Printf, Random — tracked in https://github.com/SciML/OrgMaintenanceScripts.jl/issues/60
-    @test_broken false
-end
+# JSON3 1.x documents these entry points but does not declare them `public` on
+# Julia 1.11. The owning package is outside SciML, so this exception is exact.
+run_qa(
+    OrgMaintenanceScripts;
+    ei_kwargs = (;
+        all_qualified_accesses_are_public = (; ignore = (:pretty, :read)),
+    )
+)
+
+using JET
 
 @testset "JET static analysis" begin
     @testset "Project utilities" begin
@@ -31,12 +27,9 @@ end
             test_file = joinpath(tmpdir, "test.jl")
             write(
                 test_file, """
-                    # Test file with version checks
                     @static if VERSION >= v"1.6"
-                        # Some code for Julia 1.6+
                     end
                     if VERSION < v"1.9"
-                        # Some code for older Julia
                     end
                 """
             )
@@ -56,22 +49,20 @@ end
     end
 
     @testset "Struct constructors" begin
-        @test_opt OrgMaintenanceScripts.VersionCheck("test.jl", 1, "test line", v"1.0", "v\"1.0\"")
-        @test_opt OrgMaintenanceScripts.InvalidationEntry("method", "file.jl", 1, "pkg", "reason", 0, 0)
-        @test_opt OrgMaintenanceScripts.InvalidationReport(
-            "repo", 0, OrgMaintenanceScripts.InvalidationEntry[], String[], Dates.now(), "summary", String[]
+        @test_opt VersionCheck("test.jl", 1, "test line", v"1.0", "v\"1.0\"")
+        @test_opt InvalidationEntry("method", "file.jl", 1, "pkg", "reason", 0, 0)
+        @test_opt InvalidationReport(
+            "repo", 0, InvalidationEntry[], String[], Dates.now(), "summary", String[]
         )
     end
 
     @testset "Report functions" begin
-        checks = OrgMaintenanceScripts.VersionCheck[]
-        @test_opt target_modules = (OrgMaintenanceScripts,) OrgMaintenanceScripts.print_version_check_summary(
-            devnull, checks
-        )
+        checks = VersionCheck[]
+        @test_opt target_modules = (OrgMaintenanceScripts,) print_version_check_summary(devnull, checks)
 
         mktempdir() do tmpdir
             output_file = joinpath(tmpdir, "output.jl")
-            @test_opt target_modules = (OrgMaintenanceScripts,) OrgMaintenanceScripts.write_version_checks_to_script(
+            @test_opt target_modules = (OrgMaintenanceScripts,) write_version_checks_to_script(
                 checks, output_file
             )
         end

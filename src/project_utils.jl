@@ -1,5 +1,7 @@
 # Utilities for handling repositories with multiple Project.toml files
 
+import TOML
+
 """
     find_all_project_tomls(repo_path::String)
 

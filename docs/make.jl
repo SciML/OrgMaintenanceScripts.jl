@@ -10,6 +10,8 @@ DocMeta.setdocmeta!(
 
 makedocs(;
     modules = [OrgMaintenanceScripts],
+    doctest = true,
+    checkdocs = :exports,
     authors = "SciML Contributors",
     repo = "https://github.com/SciML/OrgMaintenanceScripts.jl/blob/{commit}{path}#{line}",
     sitename = "OrgMaintenanceScripts.jl",

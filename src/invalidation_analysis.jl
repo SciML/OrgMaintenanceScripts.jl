@@ -1,9 +1,37 @@
-using Dates
-using LibGit2
-using Distributed
-using HTTP
-using JSON3
+import Dates
+import JSON3
+import Pkg
+import SnoopCompileCore
+import TOML
+using Dates: DateTime, now
+using Random: randstring
 
+"""
+    InvalidationEntry(method, file, line, package, reason, children_count, depth)
+
+Describe one method invalidation in an [`InvalidationReport`](@ref).
+
+# Fields
+
+- `method::String`: textual method signature reported by SnoopCompileCore.
+- `file::String`: source path associated with the invalidated method.
+- `line::Int`: one-based source line, or `0` when unavailable.
+- `package::String`: package inferred from the source path.
+- `reason::String`: human-readable classification of the invalidation.
+- `children_count::Int`: number of child invalidations caused by this entry.
+- `depth::Int`: depth of the entry in the invalidation tree.
+
+# Examples
+
+```jldoctest
+entry = InvalidationEntry("f(::Int)", "src/f.jl", 12, "Demo", "method replaced", 2, 0)
+entry.children_count
+
+# output
+
+2
+```
+"""
 struct InvalidationEntry
     method::String
     file::String
@@ -14,6 +42,35 @@ struct InvalidationEntry
     depth::Int
 end
 
+"""
+    InvalidationReport(repo, total_invalidations, major_invalidators,
+                       packages_affected, analysis_time, summary, recommendations)
+
+Collect the invalidation analysis results for one repository.
+
+# Fields
+
+- `repo::String`: repository path or identifier analyzed.
+- `total_invalidations::Int`: total number of captured invalidations.
+- `major_invalidators::Vector{InvalidationEntry}`: highest-impact entries.
+- `packages_affected::Vector{String}`: packages represented by captured entries.
+- `analysis_time::DateTime`: time at which analysis completed.
+- `summary::String`: concise human-readable result.
+- `recommendations::Vector{String}`: suggested follow-up actions.
+
+# Examples
+
+```jldoctest
+using Dates
+report = InvalidationReport("Demo.jl", 0, InvalidationEntry[], String[],
+    DateTime(2026, 1, 1), "No invalidations", String[])
+report.total_invalidations
+
+# output
+
+0
+```
+"""
 struct InvalidationReport
     repo::String
     total_invalidations::Int
@@ -40,12 +97,13 @@ function analyze_invalidations_in_process(repo_path::String, test_script::String
 
     # Default test script that loads the package and runs basic operations
     default_test = """
-        using Pkg
+        import Pkg
+        import TOML
         Pkg.activate(".")
         Pkg.instantiate()
         
         # Try to load the main package
-        project = Pkg.TOML.parsefile("Project.toml")
+        project = TOML.parsefile("Project.toml")
         if haskey(project, "name")
             pkg_name = project["name"]
             try
@@ -156,7 +214,9 @@ function analyze_invalidations_in_process(repo_path::String, test_script::String
 
     # Run the analysis in a separate process
     try
-        @info "Running invalidation analysis in separate process..."
+        @info "Running invalidation analysis in separate process..." snoopcompilecore_version = pkgversion(
+            SnoopCompileCore
+        )
         result = read(`julia --project=$repo_path $analysis_script`, String)
 
         # Extract JSON from output
@@ -191,7 +251,7 @@ end
 Analyze invalidation data to identify the major invalidators.
 Returns a list of the most problematic invalidations.
 
-The `invalidation_data` argument should be a Dict-like object (typically from JSON3.read)
+The `invalidation_data` argument should be a dictionary (typically from `JSON3.read`)
 with an "invalidation_details" key containing a vector of invalidation entries.
 """
 function analyze_major_invalidators(invalidation_data::AbstractDict)
