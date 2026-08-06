@@ -1,7 +1,6 @@
 # Documentation cleanup functions for SciML repositories
 
-using Pkg
-using Dates
+using Dates: now
 
 """
     cleanup_gh_pages_docs(repo_path::String; 

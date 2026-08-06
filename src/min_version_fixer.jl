@@ -1,11 +1,12 @@
 # Minimum Version Fixer
 # Automatically fix minimum version bounds for Julia packages
 
-using Pkg
-using TOML
-using Dates
-using HTTP
-using JSON3
+import Dates
+import HTTP
+import JSON3
+import Pkg
+import TOML
+using Dates: now
 
 """
     setup_resolver(work_dir::String)
@@ -293,7 +294,7 @@ function get_latest_version(pkg_name::String)
             Pkg.activate(tmpdir)
             Pkg.add(pkg_name; io = devnull)
 
-            manifest = Pkg.TOML.parsefile(joinpath(tmpdir, "Manifest.toml"))
+            manifest = TOML.parsefile(joinpath(tmpdir, "Manifest.toml"))
 
             # Look for the package in manifest
             for (name, entries) in manifest

@@ -1,9 +1,5 @@
 module OrgMaintenanceScripts
 
-using Pkg
-using TOML
-using Dates
-
 # Include project utilities for handling multiple Project.toml files
 include("project_utils.jl")
 

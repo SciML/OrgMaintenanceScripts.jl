@@ -1,10 +1,15 @@
 # Explicit Imports Fixer
 # Automatically fix explicit import issues using ExplicitImports.jl
 
-using Pkg
-using TOML
-using ExplicitImports
-using JSON3
+import Dates
+import ExplicitImports
+import JSON3
+import Pkg
+import TOML
+using Dates: now
+using ExplicitImports: check_all_explicit_imports_are_public,
+    check_all_qualified_accesses_via_owners, check_no_implicit_imports,
+    check_no_stale_explicit_imports
 
 """
     run_explicit_imports_check_all(repo_path::String; verbose=true, include_subpackages=true)
@@ -71,7 +76,7 @@ function run_explicit_imports_check(package_path::String; verbose = true)
             # Load the package
             try
                 # Use Base.eval to load the package in Main
-                Base.eval(Main, :(using $(Symbol(pkg_name))))
+                eval(Main, :(using $(Symbol(pkg_name))))
             catch e
                 error_msg = "Failed to load package $pkg_name: $(sprint(showerror, e))"
                 if verbose

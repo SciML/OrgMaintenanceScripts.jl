@@ -1,8 +1,7 @@
-using Dates
-using LibGit2
-using Distributed
-using HTTP
-using JSON3
+import Dates
+import Distributed
+using Dates: now
+using Distributed: @everywhere, addprocs, nworkers, pmap
 
 const VERSION_CHECK_PATTERNS = [
     r"@static\s+if\s+VERSION\s*[><=]=?\s*v\"(\d+\.\d+(?:\.\d+)?)\""i,
@@ -15,6 +14,30 @@ const VERSION_CHECK_PATTERNS = [
 
 const JULIA_LTS = v"1.10"
 
+"""
+    VersionCheck(file, line_number, line_content, version, pattern_match)
+
+Describe one Julia-version conditional found in source code.
+
+# Fields
+
+- `file::String`: path of the source file containing the conditional.
+- `line_number::Int`: one-based source line number.
+- `line_content::String`: complete text of the matching source line.
+- `version::VersionNumber`: Julia version named by the conditional.
+- `pattern_match::String`: exact substring matched by the scanner.
+
+# Examples
+
+```jldoctest
+check = VersionCheck("src/example.jl", 8, "VERSION < v\\\"1.10\\\"", v"1.10", "v\\\"1.10\\\"")
+check.version
+
+# output
+
+v"1.10.0"
+```
+"""
 struct VersionCheck
     file::String
     line_number::Int
@@ -341,9 +364,7 @@ function fix_version_checks_parallel(
             work_dir = mktempdir()
 
             # Clone the repository
-            repo = LibGit2.GitRepo(repo_path)
-            remote_url = LibGit2.url(LibGit2.get(LibGit2.GitRemote, repo, "origin"))
-            close(repo)
+            remote_url = readchomp(`git -C $repo_path remote get-url origin`)
 
             # Extract owner/repo from URL
             m = match(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$", remote_url)
