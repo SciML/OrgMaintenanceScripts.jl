@@ -554,14 +554,14 @@ function write_invalidation_report(report::InvalidationReport, output_file::Stri
         "recommendations" => report.recommendations,
         "major_invalidators" => [
             Dict(
-                    "method" => inv.method,
-                    "file" => inv.file,
-                    "line" => inv.line,
-                    "package" => inv.package,
-                    "reason" => inv.reason,
-                    "children_count" => inv.children_count,
-                    "depth" => inv.depth
-                ) for inv in report.major_invalidators
+                "method" => inv.method,
+                "file" => inv.file,
+                "line" => inv.line,
+                "package" => inv.package,
+                "reason" => inv.reason,
+                "children_count" => inv.children_count,
+                "depth" => inv.depth
+            ) for inv in report.major_invalidators
         ]
     )
 

@@ -590,14 +590,14 @@ function write_import_timing_report(report::ImportTimingReport, output_file::Str
         "raw_output" => report.raw_output,
         "major_contributors" => [
             Dict(
-                    "package_name" => timing.package_name,
-                    "total_time" => timing.total_time,
-                    "precompile_time" => timing.precompile_time,
-                    "load_time" => timing.load_time,
-                    "dependencies" => timing.dependencies,
-                    "dep_count" => timing.dep_count,
-                    "is_local" => timing.is_local
-                ) for timing in report.major_contributors
+                "package_name" => timing.package_name,
+                "total_time" => timing.total_time,
+                "precompile_time" => timing.precompile_time,
+                "load_time" => timing.load_time,
+                "dependencies" => timing.dependencies,
+                "dep_count" => timing.dep_count,
+                "is_local" => timing.is_local
+            ) for timing in report.major_contributors
         ]
     )
 
