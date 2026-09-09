@@ -4,15 +4,10 @@
 #
 # Core reproduces the previous CI matrix (Julia 1.10 == "lts", and "1").
 # QA runs Aqua/JET static analysis in an isolated environment (test/qa).
+# No x86 lane: HTTP/Reseau TLS precompile fails on i686 ("unexpected resumed state").
 
 [Core]
 versions = ["lts", "1"]
-
-["Core 32-bit"]
-group = "Core"
-versions = ["1"]
-os = ["ubuntu-latest"]
-arch = "x86"
 
 [QA]
 versions = ["lts", "1"]
